@@ -86,25 +86,31 @@ function AdvancedPage() {
           index="02"
           eyebrow="Convergence Control"
           title="Early Stopping Dynamics & Framework Mechanics"
-          description="Because boosting ensembles can drive empirical training loss toward zero with sufficient tree depth, training unchecked for thousands of rounds risks overfitting. Early stopping halts execution at the point of optimal validation performance."
+          description="While high-capacity tree ensembles can overfit if trained unchecked for thousands of rounds, early stopping halts execution when validation performance ceases to improve."
         />
         <div className="grid gap-8 md:ml-[136px] lg:grid-cols-[1.2fr_1fr]">
           <div className="space-y-4 text-sm leading-relaxed text-muted-foreground">
             <p>
-              Under deterministic full-batch gradient boosting, training loss decreases monotonically. In stochastic settings (using row or column subsampling), training loss can exhibit small fluctuations but trends steadily downward. Meanwhile, validation loss initially drops, reaches a minimum (the point of optimal generalization capacity), and subsequently rises as the model fits idiosyncratic noise.
+              The trajectory of empirical training loss is inherently context-dependent:
             </p>
+            <ul className="list-disc pl-5 space-y-1 text-xs text-muted-foreground">
+              <li><strong>Stochastic Fluctuations:</strong> In deterministic full-batch gradient boosting with exact line search on convex losses, empirical training loss generally decreases. However, when using stochastic row subsampling (<code className="text-foreground">subsample &lt; 1.0</code>) or column subsampling (<code className="text-foreground">colsample_bytree &lt; 1.0</code>), the full-dataset training loss can fluctuate between rounds because trees fit random subsets.</li>
+              <li><strong>Asymptotic Error Plateaus:</strong> Boosting does <em>not</em> necessarily drive training error to zero. In datasets with overlapping class distributions (Bayes error), label noise, shallow tree depth constraints (e.g., depth-1 stumps), or strong regularizers (<InlineMath formula="\lambda, \gamma" />), training error asymptotically plateaus well above zero.</li>
+              <li><strong>Validation Divergence:</strong> As model capacity expands, validation loss initially drops, reaches an optimal minimum (the balance point of generalization capacity), and subsequently creeps upward as subsequent trees fit sample-specific residual noise.</li>
+            </ul>
+
             <div className="rounded border border-hairline bg-surface p-4 text-xs space-y-2">
               <div><strong className="text-foreground">Patience Parameter (stopping_rounds):</strong> Number of successive iterations with no validation metric improvement before execution halts.</div>
-              <div><strong className="text-foreground">Best Iteration Restoration:</strong> When early stopping triggers, modern frameworks restore model inference to the optimal checkpoint.</div>
+              <div><strong className="text-foreground">Checkpoint Restoration Differences:</strong> Frameworks do not handle best-iteration inference identically; understanding their specific behaviors is essential.</div>
             </div>
 
             <div className="rounded border border-hairline/60 bg-surface-2 p-3 space-y-2 text-xs">
-              <div className="font-semibold text-foreground">Framework Model Restoration Behaviors:</div>
+              <div className="font-semibold text-foreground">Framework Checkpoint &amp; Restoration Behaviors:</div>
               <ul className="space-y-1.5 text-muted-foreground">
-                <li>• <strong className="text-cyan">XGBoost:</strong> Sets <code className="text-foreground">best_iteration</code> and <code className="text-foreground">best_score</code>. Modern XGBoost (1.6+) automatically configures <code className="text-foreground">predict()</code> to score using trees <InlineMath formula="[0, \text{best\_iteration} + 1)" />.</li>
-                <li>• <strong className="text-lime">LightGBM:</strong> <code className="text-foreground">early_stopping</code> callback records <code className="text-foreground">best_iteration_</code>, and predictions automatically evaluate up to the best stage.</li>
-                <li>• <strong className="text-violet">CatBoost:</strong> Automatically retains the best tree configuration when <code className="text-foreground">use_best_model=True</code> (default).</li>
-                <li>• <strong className="text-orange">Scikit-Learn:</strong> <code className="text-foreground">n_iter_no_change</code> early stopping truncates additional estimators and preserves <code className="text-foreground">n_estimators_</code> at the best stage.</li>
+                <li>• <strong className="text-cyan">XGBoost:</strong> Records <code className="text-foreground">best_iteration</code> and <code className="text-foreground">best_score</code>. Modern XGBoost (1.6+) automatically configures <code className="text-foreground">predict()</code> to evaluate trees up to <code className="text-foreground">best_iteration + 1</code>, but all trees up to the stopping point remain stored in memory unless explicitly sliced via <code className="text-foreground">iteration_range</code>.</li>
+                <li>• <strong className="text-lime">LightGBM:</strong> The <code className="text-foreground">early_stopping</code> callback records <code className="text-foreground">best_iteration_</code>. Standard Scikit-Learn API <code className="text-foreground">predict()</code> uses this best stage by default, but low-level booster evaluation or raw model file exports may require explicitly passing <code className="text-foreground">num_iteration=model.best_iteration_</code>.</li>
+                <li>• <strong className="text-violet">CatBoost:</strong> Automatically scores using the best validation iteration when <code className="text-foreground">use_best_model=True</code> (the default when an evaluation set is provided). If explicitly set to <code className="text-foreground">False</code>, it scores with all iterations through the stopping round.</li>
+                <li>• <strong className="text-orange">Scikit-Learn:</strong> In <code className="text-foreground">GradientBoosting*</code> with <code className="text-foreground">n_iter_no_change</code>, training halts after patience expires and the model truncates internal estimator lists to the best stage (<code className="text-foreground">n_estimators_</code>).</li>
               </ul>
             </div>
 
