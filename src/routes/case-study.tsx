@@ -41,6 +41,10 @@ function CaseStudyPage() {
       <SectionIndex items={SECTIONS} />
 
       <Container className="pt-12 pb-6">
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <Pill tone="cyan">Illustrative Benchmark Simulation</Pill>
+          <span className="font-mono text-xs text-muted-foreground">Synthetically calibrated consumer installment loan portfolio</span>
+        </div>
         <div className="grid grid-cols-2 border border-hairline lg:grid-cols-4 [&>*]:border-hairline [&>*:not(:last-child)]:border-r">
           <MetricCard label="Best Model (XGBoost)" value="0.92" delta="+0.08" hint="vs Logistic Regression" tone="violet" />
           <MetricCard label="Target Recall" value="74%" delta="+12%" hint="at 82% precision" tone="cyan" />
@@ -104,8 +108,8 @@ function CaseStudyPage() {
         />
         <div className="max-w-4xl space-y-6 md:ml-[136px]">
           <DatasetPreview
-            name="loan_portfolio_data.csv"
-            meta="5,000 rows × 8 features · Default Rate = 14.8%"
+            name="synthetic_loan_portfolio.csv"
+            meta="5,000 synthetic rows × 8 features · Default Rate = 14.8% · Illustrative Benchmark"
             rows={CREDIT_SAMPLE}
           />
 
@@ -188,6 +192,9 @@ function CaseStudyPage() {
               <ModelComparisonChart />
             </ChartContainer>
           </div>
+          <p className="font-mono text-xs text-muted-foreground">
+            * Note: Benchmark metrics reflect an illustrative synthetic simulation (5,000 observations, 14.8% default prevalence, 80/20 train/test split). Real-world credit risk benchmarks depend on specific portfolio macroeconomic conditions and feature sets.
+          </p>
 
           <KeyTakeaway
             title="Analysis of Benchmark Results"
@@ -211,33 +218,44 @@ function CaseStudyPage() {
         />
         <div className="max-w-4xl space-y-6 md:ml-[136px]">
           <p className="text-sm leading-relaxed text-muted-foreground">
-            Because the cost of approving a defaulter (\$15,000) is 12.5× higher than rejecting a good applicant (\$1,200), we tune the decision threshold <InlineMath formula="\theta" /> by minimizing the expected cost curve rather than optimizing accuracy:
+            Because the cost of approving a defaulter (<InlineMath formula="C_{\text{FN}} = \$15,000" />) is 12.5× higher than turning away a creditworthy applicant (<InlineMath formula="C_{\text{FP}} = \$1,200" />), we tune the decision threshold <InlineMath formula="\theta" /> by minimizing expected monetary cost rather than maximizing raw classification accuracy:
           </p>
 
           <MathBlock
-            label="The Optimal Decision Threshold Rule"
-            formula="\theta^* = \frac{C_{\text{FP}}}{C_{\text{FP}} + C_{\text{FN}}} = \frac{1,200}{1,200 + 15,000} = \frac{1,200}{16,200} \approx 0.074"
-            note="If the calibrated default probability exceeds just 7.4%, the mathematically rational financial decision is to DECLINE the loan!"
+            label="Theoretical Bayes-Optimal Decision Threshold"
+            formula="\theta^* = \frac{C_{\text{FP}}}{C_{\text{FP}} + C_{\text{FN}}} = \frac{1,200}{1,200 + 15,000} = \frac{1,200}{16,200} \approx 0.0741 \quad (7.41\%)"
+            terms={[
+              ["\\theta^*", "Bayes-optimal default probability cutoff for calibrated probabilities"],
+              ["C_{\\text{FN}}", "Loss from approving a defaulter ($15,000 principal write-off)"],
+              ["C_{\\text{FP}}", "Opportunity cost from rejecting a solvent borrower ($1,200 interest profit)"],
+            ]}
+            note="Under strictly calibrated probabilities, predicting default whenever p >= 7.41% minimizes theoretical portfolio loss. In commercial banking practice, institutions explore the full empirical cost curve to balance write-off reduction against commercial loan volume requirements."
           />
 
           <WorkedExample
-            title="Threshold Shift Impact on Portfolio Performance"
-            description="Evaluating 1,000 loan applicants with a portfolio default rate of 14.8%."
+            title="Threshold Shift Impact on Portfolio Performance (1,000 Applicant Cohort)"
+            description="Evaluating 1,000 loan applicants with a baseline default prevalence of 14.8% (148 actual defaults, 852 actual non-defaulters)."
             steps={[
               {
-                label: "Standard Threshold (θ = 0.50)",
-                calculation: "Approved: 880 applicants. Defaults allowed through: 52 False Negatives.\n52 FN × $15,000 = $780,000 loss.",
-                result: "Net Portfolio Cost: $780,000",
-                explanation: "High default leakages due to symmetric 0.50 threshold.",
+                label: "Operating Point 1: Standard Symmetric Threshold (θ = 0.50)",
+                calculation: "Approved: 880 applicants (120 rejected).\n• False Negatives (missed defaults approved): 52 × $15,000 = $780,000 loss.\n• False Positives (good borrowers rejected): 20 × $1,200 = $24,000 lost profit.\nTotal Portfolio Cost: $780,000 + $24,000 = $804,000. Recall: 64.9% (96/148).",
+                result: "Net Portfolio Cost: $804,000",
+                explanation: "The default 0.50 cutoff allows 52 defaulting borrowers to receive funding, creating severe bad-debt write-offs because the classifier treats $1,200 errors and $15,000 errors identically.",
               },
               {
-                label: "Cost-Optimal Threshold (θ = 0.18)",
-                calculation: "Approved: 760 applicants. Defaults caught: Recall rises from 65% to 88%.\nFalse Negatives drop to 18 ($270,000 loss). False Positives rise to 90 ($108,000 lost profit).",
-                result: "Net Portfolio Cost: $378,000 (Savings: $402,000 / year)",
-                explanation: "Tuning the threshold saves $402,000 annually on this sample portfolio alone!",
+                label: "Operating Point 2: Balanced Production Operating Threshold (θ = 0.18)",
+                calculation: "Approved: 760 applicants (240 rejected).\n• False Negatives: drops from 52 to 18 (130 defaults caught). 18 × $15,000 = $270,000 loss.\n• False Positives: rises to 90 applicants. 90 × $1,200 = $108,000 lost profit.\nTotal Portfolio Cost: $270,000 + $108,000 = $378,000. Recall: 87.8% (130/148).",
+                result: "Net Portfolio Cost: $378,000 (Annual Savings: $426,000 / 53.0%)",
+                explanation: "A balanced operating threshold favored by risk committees: it cuts bad-debt write-offs by 65% while maintaining acceptable 76% commercial loan origination volume.",
+              },
+              {
+                label: "Operating Point 3: Theoretical Bayes-Optimal Cutoff (θ* ≈ 0.074)",
+                calculation: "Approved: 676 applicants (324 rejected).\n• False Negatives: drops to 6 (142 defaults caught). 6 × $15,000 = $90,000 loss.\n• False Positives: rises to 180 applicants. 180 × $1,200 = $216,000 lost profit.\nTotal Portfolio Cost: $90,000 + $216,000 = $306,000. Recall: 95.9% (142/148).",
+                result: "Net Portfolio Cost: $306,000 (Annual Savings: $498,000 / 61.9%)",
+                explanation: "Achieves the minimum possible expected monetary loss under well-calibrated probabilities. However, rejecting 32.4% of total applicants reduces market share, which is why commercial lenders often select intermediate points like θ = 0.18.",
               },
             ]}
-            conclusion="Machine learning predictions only translate into business value when coupled with cost-aware decision thresholding."
+            conclusion="Machine learning predictions only translate into business value when coupled with cost-aware decision thresholding calibrated to financial loss matrices."
           />
         </div>
       </Container>
@@ -248,8 +266,8 @@ function CaseStudyPage() {
           id="interpretability-shap"
           index="06"
           eyebrow="Explainability"
-          title="SHAP Interpretability & Adverse Action Notices"
-          description="Under the Fair Credit Reporting Act (FCRA) and Equal Credit Opportunity Act (ECOA), lenders are legally required to provide specific, truthful reasons when credit is denied."
+          title="SHAP Interpretability & Adverse Action Disclosures"
+          description="Under the Equal Credit Opportunity Act (ECOA / Regulation B) and the Fair Credit Reporting Act (FCRA), lenders must provide specific, truthful reasons when credit is denied."
         />
         <div className="max-w-4xl space-y-6 md:ml-[136px]">
           <div className="grid gap-6 lg:grid-cols-[1.3fr_1fr]">
@@ -259,23 +277,34 @@ function CaseStudyPage() {
 
             <div className="space-y-4 text-xs leading-relaxed text-muted-foreground">
               <h5 className="font-display text-sm font-semibold text-foreground">
-                Local Individual Explanations
+                Local Additive Attributions
               </h5>
               <p>
-                For any applicant, TreeSHAP decomposes the predicted default probability into additive contributions:
+                For an individual applicant, TreeSHAP decomposes the model output margin (log-odds <InlineMath formula="F(x) = \ln(p / (1-p))" />) into additive feature attributions:
               </p>
               <div className="rounded border border-hairline bg-surface p-3 font-mono text-[11px] text-foreground space-y-1">
-                <div>Base rate (population): 14.8%</div>
-                <div className="text-orange">+ Credit Score 598: +12.4%</div>
-                <div className="text-orange">+ DTI 0.47: +8.1%</div>
-                <div className="text-lime">- Income $95k: -3.2%</div>
-                <div className="font-semibold text-violet">= Final Default Prob: 32.1% (DECLINE)</div>
+                <div>Expected value E[F(X)]: -1.75 (base prob: 14.8%)</div>
+                <div className="text-orange">+ Credit Score 598: +0.62 (log-odds)</div>
+                <div className="text-orange">+ DTI 0.47: +0.48 (log-odds)</div>
+                <div className="text-lime">- Income $95k: -0.21 (log-odds)</div>
+                <div className="font-semibold text-violet">= F(x) = -0.86 → p = 29.7% (&gt; 18% cutoff: DECLINE)</div>
               </div>
               <p className="text-[11px]">
-                The two largest positive SHAP contributions (<code className="text-orange">low credit score</code> and <code className="text-orange">high debt-to-income</code>) become the primary regulatory adverse action reasons delivered to the consumer.
+                The largest positive SHAP contributions (e.g. low credit score, elevated debt-to-income) indicate the primary model features that drove the predicted default probability above the threshold.
               </p>
             </div>
           </div>
+
+          <WarningCallout title="Regulatory Compliance & Causality Disclosures">
+            <div className="space-y-2 text-xs">
+              <p>
+                <strong>CFPB Consumer Financial Protection Circular 2022-03:</strong> The CFPB clarified that creditors cannot rely on post-hoc explanation tools (such as SHAP or LIME) if they produce inaccurate, unstable, or fabricated reasons for adverse action. Creditors must understand the specific, actual factors that led to denial under Regulation B (12 CFR § 1002.9) and FCRA (15 U.S.C. § 1681m).
+              </p>
+              <p>
+                <strong>Associative vs Causal:</strong> SHAP measures statistical attribution within the model's internal decision logic (<InlineMath formula="\mathbb{E}[f(X) \mid X_j = x_j]" />). It does <em>not</em> prove causal interventions (<InlineMath formula="P(Y \mid \text{do}(X_j))" />). A model explanation never legalizes an algorithmic decision that causes unlawful disparate impact.
+              </p>
+            </div>
+          </WarningCallout>
         </div>
       </Container>
 
@@ -285,35 +314,42 @@ function CaseStudyPage() {
           id="production-governance"
           index="07"
           eyebrow="Governance & Risk"
-          title="Real-World Challenges: Drift, Bias & Compliance"
-          description="Deploying credit models requires adherence to federal model risk management guidance (Federal Reserve SR 11-7)."
+          title="Real-World Governance: SR 11-7, Drift & Fair Lending"
+          description="Deploying credit models in regulated banking requires adherence to Federal Reserve SR 11-7 / OCC Bulletin 2011-12 model risk management guidance."
         />
         <div className="max-w-4xl space-y-6 md:ml-[136px]">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="rounded border border-hairline bg-surface p-5 text-xs space-y-2">
-              <div className="font-mono font-semibold text-orange">Concept & Data Drift</div>
+              <div className="font-mono font-semibold text-orange">Concept & Data Drift (PSI)</div>
               <p className="text-muted-foreground">
-                Economic shifts (such as sudden interest rate hikes or recessions) alter the relationship between borrower features and default probability. Models must be monitored continuously using <strong>Population Stability Index (PSI)</strong>:
+                Macroeconomic shocks (interest rate changes, inflation) alter borrower delinquency dynamics. Credit risk models must track the <strong>Population Stability Index (PSI)</strong>:
               </p>
               <div className="rounded bg-surface-2 p-2 font-mono text-[11px] text-foreground">
                 PSI = Σ (Actual% - Expected%) × ln(Actual% / Expected%)
               </div>
-              <p className="text-muted-foreground">PSI &gt; 0.25 indicates severe distribution drift requiring retraining.</p>
+              <p className="text-muted-foreground">PSI &lt; 0.10: Stable; 0.10–0.25: Moderate drift (monitor); &gt; 0.25: Significant drift requiring model recalibration or retuning.</p>
             </div>
 
             <div className="rounded border border-hairline bg-surface p-5 text-xs space-y-2">
               <div className="font-mono font-semibold text-cyan">Fair Lending & Disparate Impact</div>
               <p className="text-muted-foreground">
-                Even when protected attributes (race, gender, age) are excluded from the dataset, boosting algorithms can discover collinear proxy variables that inadvertently produce disparate impact.
+                Excluding protected attributes (race, gender, national origin, age) does not guarantee compliance. Boosting models readily uncover non-linear proxy variables that may induce disparate impact.
               </p>
               <p className="text-muted-foreground">
-                Lenders must calculate the <strong>Adverse Impact Ratio (AIR)</strong>: the approval rate of protected classes must not fall below 80% of the non-protected class approval rate (Four-Fifths Rule).
+                Institutions must evaluate the <strong>Adverse Impact Ratio (AIR)</strong> under the Equal Credit Opportunity Act (ECOA): approval rates across protected groups must satisfy the Four-Fifths Rule (AIR &ge; 0.80) unless justified by legitimate business necessity with no less discriminatory alternative.
               </p>
             </div>
           </div>
 
+          <div className="rounded border border-hairline bg-surface p-5 text-xs space-y-2">
+            <div className="font-mono font-semibold text-violet">Federal Reserve SR 11-7 / OCC 2011-12 Governance Pillars</div>
+            <p className="text-muted-foreground">
+              Federal guidance on Model Risk Management requires three independent lines of defense: (1) Sound model development and conceptual justification; (2) Rigorous independent model validation prior to deployment; and (3) Ongoing outcome analysis, benchmarking, and governance committee oversight.
+            </p>
+          </div>
+
           <WarningCallout title="Educational Scope Notice">
-            This module provides a pedagogical demonstration of boosting workflows in financial credit assessment. Production credit underwriting systems require independent model validation (SR 11-7), fair lending audits, stress testing under macroeconomic shock scenarios, and full regulatory governance.
+            This module provides a pedagogical simulation of boosting workflows in consumer credit risk. Production credit underwriting systems require formal independent model validation (SR 11-7), fair lending legal reviews, stress testing under macroeconomic adverse scenarios, and continuous compliance audits.
           </WarningCallout>
         </div>
       </Container>
@@ -344,15 +380,15 @@ function CaseStudyPage() {
               },
               {
                 id: "q2",
-                question: "How do SHAP values satisfy legal requirements under the Fair Credit Reporting Act (FCRA)?",
+                question: "How do Shapley additive explanations (SHAP) assist lenders with adverse action requirements under FCRA and ECOA (Regulation B)?",
                 options: [
-                  "They prove that the machine learning model has 0% error",
-                  "They provide exact, mathematically consistent per-feature contributions for an individual decision, allowing the lender to specify the top reasons for loan denial",
-                  "They encrypt borrower data so regulators cannot inspect it",
-                  "They replace the need for credit scores",
+                  "They grant automatic legal immunity from fair lending audits and guarantee 0% model error",
+                  "They provide mathematically consistent local feature attributions in log-odds space, helping identify the principal factors driving an individual credit denial under CFPB Circular 2022-03 guidelines",
+                  "They automatically scrub all demographic variables and proxy features from the training pipeline",
+                  "They eliminate the need for independent model validation required by Federal Reserve SR 11-7",
                 ],
                 correctIndex: 1,
-                explanation: "FCRA mandates that consumers denied credit receive Adverse Action Notices citing the specific primary factors that led to rejection. TreeSHAP quantifies exactly which features most severely pushed an individual applicant's predicted default risk above the approval cutoff.",
+                explanation: "Under FCRA and ECOA (Regulation B), lenders must disclose the principal specific factors leading to adverse action. CFPB Circular 2022-03 requires that reasons derived from complex algorithms accurately reflect the factors considered. TreeSHAP quantifies exact local feature attributions, though creditors must still verify that reasons are truthful, stable, and compliant with fair lending laws.",
               },
               {
                 id: "q3",

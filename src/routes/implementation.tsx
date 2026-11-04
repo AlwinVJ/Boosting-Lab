@@ -369,7 +369,9 @@ function ImplementationPage() {
           </div>
 
           <WarningCallout title="Feature Importance ≠ Causal Explanation">
-            If <code className="text-cyan">credit_score</code> has high Gain importance, that proves it is a powerful statistical predictor in this model—it does <strong>not</strong> prove that increasing an applicant's credit score caused lower default probability. Collinear features can mask each other's true influence.
+            <p className="text-xs leading-relaxed">
+              If <code className="text-cyan">credit_score</code> has high Gain or SHAP attribution, that proves it is an informative statistical predictor within this specific model—it does <strong>not</strong> establish a causal effect (<InlineMath formula="P(Y \mid \text{do}(X_j))" />). Collinear features can mask each other's true influence, and high attribution can reflect spurious associations, proxy effects, or selection bias in the training distribution.
+            </p>
           </WarningCallout>
         </div>
       </Container>
