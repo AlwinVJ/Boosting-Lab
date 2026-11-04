@@ -6,37 +6,76 @@ import { ALGORITHMS, type Algorithm } from "@/data/content";
 import { CURRICULUM_MODULES } from "@/data/curriculum";
 import { cn } from "@/lib/utils";
 
-/** Horizontal learning journey rail displaying all 9 curriculum modules. */
+/** Responsive curriculum overview grid displaying all 9 modules with full topic lists and metadata. */
 export function LearningModule() {
   return (
-    <div className="overflow-x-auto pb-4">
-      <div className="relative grid min-w-[1500px] grid-cols-9 gap-4">
-        <div className="absolute left-0 right-0 top-[7px] h-px bg-hairline" />
-        {CURRICULUM_MODULES.map((m) => (
-          <Link key={m.id} to={m.to} className="group relative pr-4">
-            <span className="relative z-10 flex size-[15px] items-center justify-center border border-hairline bg-background transition-colors group-hover:border-violet">
-              <span className="size-1.5 bg-muted-foreground transition-colors group-hover:bg-violet" />
-            </span>
-            <div className="mt-6 font-mono text-[11px] text-muted-foreground">
-              {m.number} · {m.time}
+    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+      {CURRICULUM_MODULES.map((m) => {
+        const durationFormatted = m.time.replace(" h", " HOURS").toUpperCase();
+        const difficultyBadgeClass =
+          m.difficulty === "Beginner"
+            ? "border-cyan/40 bg-cyan/5 text-cyan"
+            : m.difficulty === "Intermediate"
+            ? "border-violet/40 bg-violet/5 text-violet"
+            : "border-orange/40 bg-orange/5 text-orange";
+
+        return (
+          <Link
+            key={m.id}
+            to={m.to}
+            className="group panel relative flex flex-col justify-between p-5 sm:p-6 transition-all duration-200 hover:-translate-y-1 hover:border-violet/60 hover:bg-surface-2/40 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet"
+          >
+            <div>
+              {/* Header metadata row: Module number, duration, difficulty badge */}
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-xs font-semibold uppercase tracking-wider text-violet">
+                    MODULE {m.number}
+                  </span>
+                  <span className="text-hairline">|</span>
+                  <span className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
+                    {durationFormatted}
+                  </span>
+                </div>
+                <span className={cn("border px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider", difficultyBadgeClass)}>
+                  {m.difficulty}
+                </span>
+              </div>
+
+              {/* Module Title */}
+              <h3 className="mt-4 font-display text-xl font-semibold leading-snug text-foreground transition-colors group-hover:text-violet">
+                {m.title}
+              </h3>
+
+              {/* Tagline / Brief Description */}
+              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                {m.tagline}
+              </p>
+
+              {/* Topics Covered */}
+              <div className="mt-6 border-t border-hairline pt-4">
+                <div className="font-mono text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                  Topics:
+                </div>
+                <ul className="mt-2.5 space-y-2">
+                  {m.topics.map((t) => (
+                    <li key={t} className="flex items-start gap-2.5 text-xs leading-relaxed text-foreground/80">
+                      <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-violet/60 transition-colors group-hover:bg-violet" />
+                      <span className="break-words">{t}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
-            <div className="mt-1 font-mono text-[10px] uppercase text-cyan">
-              {m.difficulty}
+
+            {/* Bottom action prompt */}
+            <div className="mt-6 flex items-center justify-between border-t border-hairline pt-4 font-mono text-xs text-muted-foreground transition-colors group-hover:text-violet">
+              <span>Explore Module {m.number}</span>
+              <ArrowUpRight size={14} className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
             </div>
-            <div className="mt-1.5 flex items-start gap-1 font-display text-sm font-medium leading-snug transition-colors group-hover:text-violet">
-              {m.shortTitle}
-              <ArrowUpRight size={12} className="mt-0.5 shrink-0 opacity-0 transition-opacity group-hover:opacity-100" />
-            </div>
-            <ul className="mt-3 space-y-1">
-              {m.topics.slice(0, 3).map((t) => (
-                <li key={t} className="line-clamp-1 text-[11px] text-muted-foreground">
-                  — {t}
-                </li>
-              ))}
-            </ul>
           </Link>
-        ))}
-      </div>
+        );
+      })}
     </div>
   );
 }
