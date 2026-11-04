@@ -49,17 +49,23 @@ function AlgorithmsPage() {
         />
         <div className="max-w-4xl space-y-8 md:ml-[136px]">
           <div className="grid gap-6 sm:grid-cols-2">
-            <div className="rounded border border-hairline bg-surface p-5">
-              <div className="font-display text-base font-semibold text-lime">Histogram-Based Split Finding</div>
-              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                Continuous features are discretized into <InlineMath formula="K = 256" /> integer bins (stored as 8-bit uint8). Instead of sorting all <InlineMath formula="N" /> data points, split evaluation costs <InlineMath formula="O(K \times \text{#features})" /> rather than <InlineMath formula="O(N \times \text{#features})" />, slashing memory by 80% and speeding up split search by up to 15×.
+            <div className="rounded border border-hairline bg-surface p-5 space-y-2">
+              <div className="font-display text-base font-semibold text-lime">Histogram-Based Split Finding (max_bin)</div>
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                Continuous features are discretized into integer bins (controlled by <code className="text-lime">max_bin</code>, default 255, stored as 8-bit <code className="text-foreground">uint8</code>). Instead of sorting all <InlineMath formula="N" /> data points at every split, histogram construction costs <InlineMath formula="O(K \times \text{#features})" /> rather than <InlineMath formula="O(N \times \text{#features})" />, slashing RAM by up to 80% and accelerating split finding by 8× to 15×.
               </p>
+              <div className="rounded bg-surface-2 p-2.5 font-mono text-[11px] text-muted-foreground">
+                max_bin=255 (balanced) · max_bin=63 (high throughput) · max_bin=511 (fine continuous resolution)
+              </div>
             </div>
-            <div className="rounded border border-hairline bg-surface p-5">
-              <div className="font-display text-base font-semibold text-cyan">Leaf-Wise (Best-First) Growth</div>
-              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                Classical trees grow level-wise (depth-wise), splitting all nodes at a given depth. LightGBM splits the single leaf that produces the <strong>maximum delta loss reduction</strong> anywhere in the tree. This achieves lower loss with fewer total splits, but requires controlling <code className="text-violet">num_leaves</code> to prevent overfitting small data.
+            <div className="rounded border border-hairline bg-surface p-5 space-y-2">
+              <div className="font-display text-base font-semibold text-cyan">Leaf-Wise (Best-First) vs Level-Wise</div>
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                Classical boosting algorithms (GBM, default XGBoost) grow trees <strong>level-wise (depth-first)</strong>, splitting all nodes at a given level simultaneously. LightGBM grows trees <strong>leaf-wise (best-first)</strong>, choosing the single leaf that produces the <em>maximum delta loss reduction</em> anywhere in the tree. While achieving lower loss with fewer splits, it requires constraining <code className="text-violet">num_leaves</code> to avoid overfitting on small datasets.
               </p>
+              <div className="rounded bg-surface-2 p-2.5 font-mono text-[11px] text-muted-foreground">
+                Note: Modern XGBoost also supports leaf-wise growth via grow_policy="lossguide".
+              </div>
             </div>
           </div>
 
@@ -130,7 +136,7 @@ function AlgorithmsPage() {
                 ["P", "Prior value: overall mean of the target variable across the entire dataset"],
                 ["a > 0", "Weight coefficient of the prior (smoothes categories with few observations)"],
               ]}
-              note="Because the target of sample i is NEVER included in its own statistic, target leakage is mathematically impossible."
+              note="Because the target of sample i is NEVER included in its own statistic, target leakage is mathematically impossible within each permutation sequence."
             />
           </div>
 
@@ -160,20 +166,84 @@ function AlgorithmsPage() {
           index="03"
           eyebrow="Comparative Matrix"
           title="5-Way Comprehensive Algorithm Comparison"
-          description="A rigorous comparison of AdaBoost, Gradient Boosting, XGBoost, LightGBM, and CatBoost across 8 architectural criteria."
+          description="A rigorous comparison of AdaBoost, Gradient Boosting, XGBoost, LightGBM, and CatBoost across 9 canonical architectural dimensions."
         />
         <div className="max-w-4xl space-y-6 md:ml-[136px]">
           <ComparisonTable
-            columns={["Feature / Dimension", "AdaBoost", "GBM (Scikit-Learn)", "XGBoost", "LightGBM", "CatBoost"]}
+            columns={["Dimension", "AdaBoost", "GBM (Scikit-Learn)", "XGBoost", "LightGBM", "CatBoost"]}
             rows={[
-              ["First Author & Year", "Freund & Schapire (1995/1997)", "J. Friedman (1999/2001)", "Chen & Guestrin (2014/2016)", "Ke et al. (Microsoft, 2017)", "Prokhorenkova et al. (Yandex, 2018)"],
-              ["Loss Optimization", "Exponential loss only", "1st-order pseudo-residuals", "2nd-order Taylor (g & h)", "2nd-order Taylor (g & h)", "Ordered functional gradient"],
-              ["Tree Growth Policy", "Decision Stumps (depth 1)", "Level-wise (depth-first)", "Level-wise (default) or leaf-wise", "Leaf-wise (best-first)", "Symmetric / Oblivious (SIMD)"],
-              ["Continuous Splits", "Exact threshold search", "Exact pre-sort (HistGBM binned)", "Exact greedy & Quantile sketch / hist", "Histogram binning (256 integer bins)", "Histogram binning (dynamic borders)"],
-              ["Categorical Handling", "Requires one-hot encoding", "Requires one-hot / Ordinal", "Partition splits / one-hot", "Integer histogram categorical splits", "Ordered Target Statistics (online)"],
-              ["Missing Value Policy", "Requires manual imputation", "Imputation (native in HistGBM)", "Sparsity-aware default direction", "Dedicated NaN histogram bin", "Min / Max float allocation"],
-              ["Training Speed (CPU)", "Fast on small; CPU only", "Slow on large N (exact pre-sort)", "Fast with tree_method='hist'", "Fastest on large dense tabular (N > 10⁵)", "Moderate on CPU, fastest on GPU"],
-              ["Inference Latency", "Fast (stump summation)", "Standard sequential tree traversal", "Fast (low-latency C++ / Treelite)", "Fast (low-latency C++ / Treelite)", "Fastest CPU scoring (SIMD bitmask)"],
+              [
+                "1. Learning Mechanism",
+                "Sequential re-weighting of misclassified training samples",
+                "Functional gradient descent fitting negative loss gradients",
+                "Regularized 2nd-order Taylor expansion (gradients + Hessians)",
+                "Histogram-based gradient boosting with GOSS & EFB",
+                "Ordered functional gradient descent on random permutations"
+              ],
+              [
+                "2. Loss Optimization",
+                "Exponential loss (binary classification); SAMME for multiclass",
+                "First-order pseudo-residuals across differentiable losses (MSE, MAE, Deviance)",
+                "Exact second-order Newton steps via analytic leaf weight optimization w* = -G/(H+λ)",
+                "Second-order Taylor optimization on discrete integer histograms",
+                "Ordered functional gradient avoiding prediction shift on arbitrary differentiable losses"
+              ],
+              [
+                "3. Tree Construction & Growth",
+                "Shallow Decision Stumps (depth 1)",
+                "Level-wise (depth-first) regression trees",
+                "Level-wise (depth-wise) by default; leaf-wise via lossguide",
+                "Leaf-wise (best-first) maximizing loss reduction per split",
+                "Symmetric (oblivious) trees sharing splits across entire levels"
+              ],
+              [
+                "4. Regularization Techniques",
+                "Implicit via early stopping & learning rate shrinkage",
+                "Shrinkage factor ν, min_samples_leaf, stochastic row subsampling",
+                "γ (min split gain), L2 leaf weight λ, L1 leaf weight α, min_child_weight",
+                "min_data_in_leaf, max_leaves constraint, feature/row subsampling, L1/L2",
+                "l2_leaf_reg penalty, random strength, structural oblivious tree symmetry"
+              ],
+              [
+                "5. Categorical Handling",
+                "Manual one-hot encoding required",
+                "Manual encoding required (or HistGradientBoosting categorical support)",
+                "One-hot encoding, partition splits (experimental), or external Ordinal",
+                "Native optimal histogram sorting for integer categories",
+                "Native Online Ordered Target Statistics with prior smoothing"
+              ],
+              [
+                "6. Missing Value Handling",
+                "Requires explicit imputation before training",
+                "Requires imputation (HistGradientBoosting routes NaNs to default bin)",
+                "Sparsity-aware split finding learns optimal default routing direction",
+                "Dedicated NaN histogram bin routed to branch yielding minimal loss",
+                "Treated as minimum or maximum floating-point value or dedicated split"
+              ],
+              [
+                "7. Efficiency & Scalability",
+                "Fast on small datasets; strictly single-core CPU in vanilla implementations",
+                "Slow on large N due to exact sorting at every split node",
+                "Highly scalable parallel CPU & GPU exact greedy and histogram split search",
+                "Fastest CPU training throughput on large dense datasets (N > 10⁵)",
+                "Moderate CPU training; fast GPU acceleration; ultra-low latency SIMD CPU inference"
+              ],
+              [
+                "8. Typical Applications",
+                "Viola-Jones real-time face detection, educational baselines",
+                "Actuarial insurance pricing, baseline ranking (LambdaMART)",
+                "Competitive data science, credit risk modeling, tabular benchmarks",
+                "High-throughput search ranking, e-commerce CTR, massive-scale forecasting",
+                "Datasets with rich high-cardinality categoricals, low-latency scoring APIs"
+              ],
+              [
+                "9. Primary Limitations",
+                "Extremely vulnerable to noisy labels and extreme outliers",
+                "Scales poorly to high sample counts without histogram binning",
+                "Extensive hyperparameter search space requiring careful tuning",
+                "Leaf-wise tree growth can aggressively overfit small datasets (N < 10,000)",
+                "Higher memory usage when computing high-cardinality interaction pairs on CPU"
+              ],
             ]}
           />
           <WarningCallout title="Benchmarking Qualification: No Universal Winner">
@@ -191,8 +261,11 @@ function AlgorithmsPage() {
           title="Algorithm Explorer & Trait Profiles"
           description="Select any algorithm to drill down into its mechanism, strengths, limitations, and trait ratings."
         />
-        <div className="md:ml-[136px]">
+        <div className="md:ml-[136px] space-y-4">
           <AlgorithmExplorer detailed />
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            *Trait ratings shown above represent aggregate empirical heuristics across standard tabular benchmarks. In production, relative throughput and predictive accuracy depend heavily on dataset cardinality, row count, feature sparsity, and hardware optimization (SIMD CPU vs. GPU acceleration).
+          </p>
         </div>
       </Container>
 
