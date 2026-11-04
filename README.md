@@ -14,6 +14,15 @@ Rather than treating algorithms as black boxes (`import model; model.fit()`), Bo
 
 ---
 
+## Data Transparency & Educational Scope Notice
+
+Boosting Lab is an interactive educational research and pedagogical platform:
+* **Demonstration Datasets:** The credit risk dataset featured in `/implementation` and `/case-study` is a 5,000-sample synthetic pedagogical dataset generated to illustrate consumer loan underwriting workflows, asymmetric error costs, and adverse action explanations. It does not represent live bank proprietary portfolio records.
+* **Model Predictions & Outputs:** Terminal outputs, benchmark comparison metrics, and confusion matrix illustrations are educational demonstrations intended to highlight comparative performance tradeoffs across algorithms, not production financial underwriting guarantees.
+* **Regulatory Frameworks:** Legal and regulatory references (ECOA / Regulation B, FCRA, SR 11-7) reflect US statutory requirements and supervisory standards as of mid-2025. CFPB Circulars 2022-03 and 2023-03 were withdrawn on May 12, 2025; statutory mandates under ECOA (15 U.S.C. § 1691) and Regulation B (12 CFR § 1002.9) remain in effect. This platform is strictly educational and does not constitute formal legal, credit underwriting, or financial advice.
+
+---
+
 ## Complete Curriculum Architecture
 
 The curriculum is organized into **nine comprehensive educational modules**:
@@ -49,10 +58,10 @@ The curriculum is organized into **nine comprehensive educational modules**:
 * Multi-parameter regularization ($\gamma, \lambda, \alpha, \text{min\_child\_weight}$) and Python `xgboost` implementation.
 
 ### 05. Modern Boosting Ecosystem: LightGBM & CatBoost (`/algorithms`)
-* **LightGBM:** Histogram-based split finding (256 discrete bins), Leaf-wise (best-first) tree growth, GOSS (Gradient-based One-Side Sampling), and Exclusive Feature Bundling (EFB).
-* **CatBoost:** Ordered Boosting to eliminate target leakage and prediction shift, Ordered Target Statistics with prior $P$, and symmetric (oblivious) trees for SIMD bitwise inference.
+* **LightGBM:** Histogram-based split finding (configurable bin count via `max_bin`, default 255 discrete bins), Leaf-wise (best-first) tree growth, GOSS (Gradient-based One-Side Sampling), and Exclusive Feature Bundling (EFB).
+* **CatBoost:** Ordered Boosting to mitigate prediction shift and self-target leakage in categorical encoding, Ordered Target Statistics with prior $P$, and symmetric (oblivious) trees for SIMD bitwise inference.
 * **Comprehensive 5-Way Comparison Matrix:** AdaBoost vs. GBM vs. XGBoost vs. LightGBM vs. CatBoost.
-* Practical selection guide: when to use which boosting framework.
+* Practical selection guide: when to use which boosting framework based on dataset geometry.
 
 ### 06. Practical Implementation Lab (`/implementation`)
 * Tabular dataset exploration (features, distributions, target imbalance).
@@ -77,11 +86,11 @@ The curriculum is organized into **nine comprehensive educational modules**:
 
 ### 09. Real-World Case Study: Credit Risk Prediction (`/case-study`)
 * Business problem framing: financial consequences of asymmetric error costs ($C_{\text{FN}} \gg C_{\text{FP}}$).
-* Exploratory analysis of a 5,000-loan consumer portfolio.
+* Exploratory analysis of a 5,000-sample synthetic consumer credit demonstration dataset.
 * Leak-proof feature engineering: leverage ratios, adjusted DTI, and payment risk indices.
 * Model benchmarking: Logistic Regression baseline vs. Random Forest vs. GBM vs. tuned XGBoost.
-* Expected loss minimization via cost-optimal decision thresholding ($\theta^* \approx 0.074$).
-* Individual loan decision explainability using TreeSHAP to satisfy adverse action notice requirements (FCRA / ECOA).
+* Expected loss minimization via cost-optimal decision thresholding ($\theta^* \approx 0.074$) vs commercial volume threshold ($\theta = 0.18$).
+* Individual loan decision explainability using TreeSHAP to satisfy adverse action notice requirements (FCRA / ECOA / Regulation B).
 * Production challenges: concept drift (PSI monitoring), algorithmic fairness (Four-Fifths Rule), and regulatory governance (SR 11-7).
 
 ### Resources & Bibliography (`/resources`)
