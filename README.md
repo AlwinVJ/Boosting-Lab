@@ -8,213 +8,165 @@ An interactive educational platform dedicated to understanding **Boosting Algori
 
 ## About the Project
 
-Boosting Lab is an educational platform designed to make ensemble learning and boosting algorithms easier to understand through structured explanations, mathematical intuitions, visual representations, and practical implementations.
+Boosting Lab is an interactive educational platform designed to make ensemble learning and boosting algorithms intuitive and mathematically rigorous. The platform explores how multiple weak learners with high bias can be combined sequentially into robust, high-precision predictive models.
 
-The platform explores how multiple weak learners can be combined sequentially to construct powerful predictive models.
-
-Rather than focusing exclusively on theoretical explanations, Boosting Lab aims to bridge the gap between mathematical understanding and practical machine learning applications.
-
-## Learning Roadmap
-
-The platform is organized into six major learning modules.
-
-### 01. Boosting Fundamentals
-
-* Introduction to Boosting Methods.
-* Weak Learners and Strong Learners.
-* Sequential Learning.
-* Boosting Iterations.
-* Boosting vs. Bagging.
-
-### 02. Gradient Boosting Machines (GBM)
-
-* Introduction to Gradient Boosting.
-* Residual-Based Learning.
-* Sequential Tree Construction.
-* Loss Functions.
-* Gradient Descent Interpretation.
-* Mathematical Foundations.
-
-### 03. XGBoost & Modern Algorithms
-
-* Understanding XGBoost Architecture.
-* Regularized Objective Functions.
-* First-Order and Second-Order Gradients.
-* Tree Construction and Split Gain.
-* AdaBoost.
-* LightGBM.
-* CatBoost.
-* Comparative Analysis of Boosting Algorithms.
-
-### 04. Practical Implementation
-
-* Implementing Gradient Boosting using Scikit-learn.
-* GradientBoostingClassifier and GradientBoostingRegressor.
-* XGBoost Implementation.
-* Model Evaluation.
-* Feature Importance Analysis.
-* Hyperparameter Tuning.
-
-### 05. Advanced Optimization
-
-* Early Stopping.
-* Learning Rate Optimization.
-* Overfitting Prevention.
-* Regularization Techniques.
-* Cross-Validation.
-* Handling Imbalanced Datasets.
-
-### 06. Real-World Applications
-
-* Credit Risk Prediction.
-* Dataset Exploration and Preprocessing.
-* Feature Engineering.
-* Model Development.
-* Performance Evaluation.
-* Business Interpretation.
-* Real-World Challenges and Solutions.
+Rather than treating algorithms as black boxes (`import model; model.fit()`), Boosting Lab bridges the gap between mathematical proofs, algorithmic implementations, and real-world machine learning engineering.
 
 ---
 
-## Key Features
+## Complete Curriculum Architecture
 
-* **Structured Learning:** Progress from fundamental concepts to advanced boosting techniques.
-* **Mathematical Intuition:** Understand the mathematics behind boosting algorithms.
-* **Algorithm Exploration:** Explore GBM, XGBoost, AdaBoost, LightGBM, and CatBoost.
-* **Python Implementations:** Learn practical implementations using Scikit-learn and XGBoost.
-* **Interactive Visualizations:** Understand sequential learning and model optimization through visual representations.
-* **Hyperparameter Exploration:** Understand how different parameters influence model performance.
-* **Real-World Case Studies:** Apply boosting algorithms to practical machine learning problems.
+The curriculum is organized into **nine comprehensive educational modules**:
+
+### 01. Fundamentals of Boosting (`/fundamentals`)
+* Introduction to Ensemble Learning (homogeneous vs. heterogeneous ensembles, Condorcet's Jury Theorem).
+* The Bias-Variance-Noise Decomposition ($\text{MSE} = \text{Bias}^2 + \text{Variance} + \sigma^2$).
+* Schapire's Weak Learning Theorem and PAC Learning foundations.
+* Boosting vs. Bagging (parallel variance reduction vs. sequential bias reduction).
+* Forward Stagewise Additive Modeling formulation ($F_M(x) = \sum_{m=1}^M \alpha_m h_m(x)$).
+
+### 02. AdaBoost: Adaptive Boosting (`/adaboost`)
+* Core intuition of adaptive sample reweighting and decision stumps.
+* Mathematical derivation of weighted classification error ($\epsilon_m$), estimator weight ($\alpha_m$), and normalization factor ($Z_m$).
+* Exponential loss equivalence and sensitivity to outlier noise.
+* Python implementation with Scikit-Learn `AdaBoostClassifier`.
+* Interactive numerical walkthrough and knowledge check quiz.
+
+### 03. Gradient Boosting Machines (`/gradient-boosting`)
+* Jerome Friedman's functional gradient descent in function space.
+* Residual learning and step-by-step numerical calculation.
+* Mathematical derivation of pseudo-residuals ($r_{im} = -\left[\frac{\partial L(y_i, F(x_i))}{\partial F(x_i)}\right]$).
+* Common loss functions: Squared Error, Absolute Error (L1), Binary Deviance, Huber Loss.
+* Shrinkage (learning rate $\nu$), line search, and terminal leaf optimization ($\gamma_{jm}$).
+* Scikit-Learn implementation with `GradientBoostingRegressor` and `GradientBoostingClassifier`.
+
+### 04. XGBoost: Extreme Gradient Boosting (`/xgboost`)
+* The regularized objective function: $\mathcal{L}^{(t)} = \sum l(y_i, \hat{y}_i^{(t-1)} + f_t(x_i)) + \Omega(f_t)$.
+* Second-order Taylor expansion with first ($g_i$) and second ($h_i$) derivatives.
+* Analytical derivation of optimal leaf weight ($w_j^* = -\frac{G_j}{H_j + \lambda}$) and structure score.
+* Split Gain formula with complexity penalty $\gamma$: $\text{Gain} = \frac{1}{2}\left[\frac{G_L^2}{H_L+\lambda} + \frac{G_R^2}{H_R+\lambda} - \frac{(G_L+G_R)^2}{H_L+H_R+\lambda}\right] - \gamma$.
+* Sparsity-aware split finding for missing values and zero-entries.
+* Multi-parameter regularization ($\gamma, \lambda, \alpha, \text{min\_child\_weight}$) and Python `xgboost` implementation.
+
+### 05. Modern Boosting Ecosystem: LightGBM & CatBoost (`/algorithms`)
+* **LightGBM:** Histogram-based split finding (256 discrete bins), Leaf-wise (best-first) tree growth, GOSS (Gradient-based One-Side Sampling), and Exclusive Feature Bundling (EFB).
+* **CatBoost:** Ordered Boosting to eliminate target leakage and prediction shift, Ordered Target Statistics with prior $P$, and symmetric (oblivious) trees for SIMD bitwise inference.
+* **Comprehensive 5-Way Comparison Matrix:** AdaBoost vs. GBM vs. XGBoost vs. LightGBM vs. CatBoost.
+* Practical selection guide: when to use which boosting framework.
+
+### 06. Practical Implementation Lab (`/implementation`)
+* Tabular dataset exploration (features, distributions, target imbalance).
+* Data preprocessing and strict temporal leakage prevention (scale-invariance of tree splits).
+* Multi-model Python workbench: reproducible scripts for AdaBoost, GBM, XGBoost, LightGBM, and CatBoost.
+* Evaluation metrics deep dive: ROC-AUC vs. PR-AUC, Confusion Matrix, MAE, MSE, and RMSE.
+* Feature importance methods: Gain, Weight, Cover, Permutation Importance, and TreeSHAP.
+* The vital distinction between statistical feature importance and causal interpretation.
+
+### 07. Hyperparameter Tuning & Optimization (`/hyperparameters`)
+* The 5-stage systematic boosting tuning protocol.
+* Interactive directory of key parameters across GBM and XGBoost.
+* Critical interaction effects: Learning Rate $\times$ Estimators, Depth $\times$ Overfitting Gap.
+* Comparison of search strategies: GridSearchCV vs. RandomizedSearchCV vs. Bayesian Optimization.
+* Full production Python script for Bayesian hyperparameter tuning using Optuna.
+
+### 08. Advanced Boosting Techniques (`/advanced`)
+* Learning rate shrinkage theory, asymptotic decay, and empirical scaling rules.
+* Early stopping dynamics: validation curve monitoring, patience parameters, and optimal iteration restoration.
+* Multi-layered overfitting defense across tree architecture, row subsampling, and feature subsampling.
+* Imbalanced classification: `scale_pos_weight` mathematics, PR-AUC optimization, and cost-sensitive threshold shifting.
+
+### 09. Real-World Case Study: Credit Risk Prediction (`/case-study`)
+* Business problem framing: financial consequences of asymmetric error costs ($C_{\text{FN}} \gg C_{\text{FP}}$).
+* Exploratory analysis of a 5,000-loan consumer portfolio.
+* Leak-proof feature engineering: leverage ratios, adjusted DTI, and payment risk indices.
+* Model benchmarking: Logistic Regression baseline vs. Random Forest vs. GBM vs. tuned XGBoost.
+* Expected loss minimization via cost-optimal decision thresholding ($\theta^* \approx 0.074$).
+* Individual loan decision explainability using TreeSHAP to satisfy adverse action notice requirements (FCRA / ECOA).
+* Production challenges: concept drift (PSI monitoring), algorithmic fairness (Four-Fifths Rule), and regulatory governance (SR 11-7).
+
+### Resources & Bibliography (`/resources`)
+* Primary foundational research papers (Schapire 1990, Freund & Schapire 1997, Friedman 2001, Chen & Guestrin 2016, Ke et al. 2017, Prokhorenkova et al. 2018, Lundberg et al. 2020).
+* Canonical statistical machine learning textbooks (Hastie, Tibshirani, Friedman 2009; Schapire & Freund 2012).
+* Official documentation and developer resources for Scikit-Learn, XGBoost, LightGBM, CatBoost, SHAP, and Optuna.
 
 ---
 
 ## Technology Stack
 
-| Technology    | Purpose                        |
-| ------------- | ------------------------------ |
-| React         | Frontend development           |
-| TypeScript    | Type safety                    |
-| Vite          | Development and build tooling  |
-| Tailwind CSS  | Styling and responsive layouts |
-| Recharts      | Data visualization             |
-| Framer Motion | Animations and transitions     |
-| Lucide React  | Icons                          |
-
-### Machine Learning Technologies
-
-The educational implementations will primarily use:
-
-* Python
-* NumPy
-* Pandas
-* Matplotlib
-* Seaborn
-* Scikit-learn
-* XGBoost
+| Technology | Purpose |
+| :--- | :--- |
+| **React 19** | Modern declarative UI component library |
+| **TypeScript** | Strict type safety with `exactOptionalPropertyTypes` |
+| **Vite 8** | Ultra-fast build tool and local development server |
+| **TanStack Router & Start** | Type-safe file-based routing and SSR application shell |
+| **KaTeX** | Fast, high-fidelity LaTeX mathematical formula rendering |
+| **Tailwind CSS v4** | Dark-mode design system with semantic lab tokens |
+| **Recharts** | Interactive SVG charting for loss curves and metrics |
+| **Framer Motion** | Visual transitions and sequential step animations |
+| **Lucide React** | Consistent, lightweight SVG icon system |
+| **Vitest** | Fast unit and integration route testing |
 
 ---
 
-## Getting Started
-
-Follow these instructions to run the project locally.
+## Getting Started Locally
 
 ### Prerequisites
-
-Make sure you have the following installed:
-
-* Node.js
-* npm
-* Git
+* **Node.js** (v20.0.0 or higher; tested on v22.17.1)
+* **npm** (v10.0.0 or higher; tested on v10.9.9)
 
 ### 1. Clone the Repository
-
 ```bash
-git clone https://github.com/YOUR_USERNAME/boosting-lab.git
-```
-
-### 2. Navigate to the Project Directory
-
-```bash
+git clone https://github.com/alwinvj/boosting-lab.git
 cd boosting-lab
 ```
 
-### 3. Install Dependencies
-
+### 2. Install Dependencies
 ```bash
-npm install
+npm install --legacy-peer-deps
 ```
 
-### 4. Start the Development Server
-
+### 3. Start the Local Development Server
 ```bash
 npm run dev
 ```
+Open your browser at the local port printed in the terminal (typically `http://localhost:3000` or `http://localhost:5173`).
 
-Open the local development URL displayed in your terminal.
+### 4. Run TypeScript Check
+```bash
+npx tsc --noEmit
+```
 
-### 5. Build for Production
+### 5. Run Automated Tests
+```bash
+npm run test
+```
 
+### 6. Build for Production
 ```bash
 npm run build
 ```
+The production bundle is generated in `.output/` with clean static client assets and standalone server entry.
 
-To preview the production build:
-
+To preview the production build locally:
 ```bash
 npm run preview
 ```
 
 ---
 
-## Project Philosophy
+## Design System & Architecture
 
-Understanding machine learning algorithms requires more than knowing how to import a model and call `.fit()`.
-
-The objective of Boosting Lab is to understand:
-
-1. Why does an algorithm work?
-2. What mathematical principles drive its learning process?
-3. How does it optimize its predictions?
-4. Which hyperparameters influence its behavior?
-5. When should we use it in real-world applications?
-6. What are its limitations?
-
-The focus is on developing a strong conceptual and practical understanding of boosting algorithms.
-
----
-
-## Project Status
-
-**Current Version: v1.0 — Initial UI**
-
-The initial development phase focuses on establishing the website's visual identity, frontend architecture, navigation, and educational module layouts.
-
-Upcoming development includes:
-
-* Detailed theoretical explanations.
-* Mathematical derivations and intuitions.
-* Interactive algorithm visualizations.
-* Python implementation examples.
-* Practical machine learning experiments.
-* Real-world case studies.
-
----
-
-## Contributing
-
-Suggestions, improvements, and contributions are welcome.
-
-If you find an issue or have an idea for improving the educational experience, feel free to open an issue or submit a pull request.
+* **Dark-Only Aesthetic:** Designed around machine learning lab research interfaces using semantic OKLCH tokens (`--violet`, `--cyan`, `--orange`, `--lime`, `--surface`, `--hairline`).
+* **In-Page Sticky Section Indexes:** Replaces static sidebar clutter with sticky contextual navigation across chapters.
+* **Separation of Concerns:** Structured curriculum metadata lives in `src/data/curriculum.ts`; educational primitives (`MathBlock`, `QuizBlock`, `DerivationStep`, `WorkedExample`) live in `src/components/lab/`.
 
 ---
 
 ## Author
 
 **Alwin V J**
-
-Machine Learning & Data Science Enthusiast
-
-GitHub: [@alwinvj](https://github.com/alwinvj)
+* Machine Learning & Data Science Enthusiast
+* GitHub: [@alwinvj](https://github.com/alwinvj)
 
 ---
 

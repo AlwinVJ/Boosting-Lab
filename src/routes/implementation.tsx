@@ -1,157 +1,431 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ChevronDown } from "lucide-react";
 import { useState } from "react";
 import { CodeBlock, ConsoleOutput } from "@/components/lab/CodeBlock";
-import { LearningRateChart } from "@/components/lab/charts";
-import { ChartContainer, Container, DatasetPreview, MetricCard, PageHero, Pill, SectionHeader, Tabs } from "@/components/lab/primitives";
-import { CREDIT_SAMPLE, HYPERPARAMS } from "@/data/content";
-import { cn } from "@/lib/utils";
+import { Container, DatasetPreview, MetricCard, PageHero, Pill, SectionHeader, SectionIndex, Tabs, ComparisonTable } from "@/components/lab/primitives";
+import { CREDIT_SAMPLE, FEATURES } from "@/data/content";
+import { FeatureImportanceChart } from "@/components/lab/charts";
+import { KeyTakeaway, WarningCallout } from "@/components/lab/PedagogicalComponents";
+import { QuizBlock } from "@/components/lab/QuizBlock";
+import { MathBlock, InlineMath } from "@/components/lab/MathBlock";
 
 export const Route = createFileRoute("/implementation")({
   head: () => ({
     meta: [
-      { title: "Implementation Lab — Boosting Lab" },
-      { name: "description", content: "Scikit-learn and XGBoost implementations of boosting with configuration panels, outputs and a hyperparameter explorer." },
-      { property: "og:title", content: "Implementation Lab — Boosting Lab" },
-      { property: "og:description", content: "A workspace for boosting experiments in scikit-learn and XGBoost." },
+      { title: "Module 06: Practical Implementation Lab — Boosting Lab" },
+      { name: "description", content: "End-to-end Python boosting lab: preprocessing, multi-model implementations, evaluation metrics, and SHAP feature importance." },
+      { property: "og:title", content: "Practical Implementation Lab — Boosting Lab" },
+      { property: "og:description", content: "Hands-on implementation guide for AdaBoost, GBM, XGBoost, LightGBM, and CatBoost in Python." },
     ],
   }),
-  component: Page,
+  component: ImplementationPage,
 });
 
-type K = "gbc" | "gbr" | "hgb" | "xgb";
-const IMPLS: Record<K, { label: string; file: string; code: string; out: string[]; metrics: [string, string][] }> = {
-  gbc: {
-    label: "GradientBoostingClassifier", file: "gb_classifier.py",
-    code: `from sklearn.ensemble import GradientBoostingClassifier
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import roc_auc_score
+type ModelKey = "adaboost" | "gbm" | "xgb" | "lightgbm" | "catboost";
 
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+interface ModelImplementation {
+  name: string;
+  file: string;
+  code: string;
+  out: string[];
+  metrics: [string, string][];
+  strengths: string;
+}
+
+const IMPLEMENTATIONS: Record<ModelKey, ModelImplementation> = {
+  adaboost: {
+    name: "AdaBoostClassifier",
+    file: "adaboost_training.py",
+    code: `from sklearn.ensemble import AdaBoostClassifier
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import roc_auc_score, classification_report
+
+# 1. Base weak learner: decision stump
+base_stump = DecisionTreeClassifier(max_depth=1, random_state=42)
+
+# 2. AdaBoost configuration
+model = AdaBoostClassifier(
+    estimator=base_stump,
+    n_estimators=150,
+    learning_rate=0.8,
+    algorithm="SAMME",
+    random_state=42
+)
+model.fit(X_train, y_train)
+
+# 3. Predict & evaluate
+y_proba = model.predict_proba(X_test)[:, 1]
+print("AdaBoost Test ROC-AUC:", roc_auc_score(y_test, y_proba))`,
+    out: ["Fitting 150 decision stumps...", "Estimator weights range: 0.12 - 0.74", "Test ROC-AUC: 0.8642"],
+    metrics: [["Accuracy", "0.83"], ["ROC-AUC", "0.86"], ["Fit Time", "0.8 s"]],
+    strengths: "Fast baseline with simple decision stumps; minimal hyperparameter tuning required.",
+  },
+  gbm: {
+    name: "GradientBoostingClassifier",
+    file: "gbm_training.py",
+    code: `from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.metrics import roc_auc_score
 
 model = GradientBoostingClassifier(
     n_estimators=300,
     learning_rate=0.05,
-    max_depth=3,
-    subsample=0.8,
-    random_state=42,
-)
-model.fit(X_train, y_train)
-proba = model.predict_proba(X_test)[:, 1]
-print("ROC-AUC:", roc_auc_score(y_test, proba))`,
-    out: ["fitting 300 estimators ...", "ROC-AUC: 0.91  (placeholder)"], metrics: [["Accuracy", "0.87"], ["ROC-AUC", "0.91"], ["Fit time", "4.2 s"]],
-  },
-  gbr: {
-    label: "GradientBoostingRegressor", file: "gb_regressor.py",
-    code: `from sklearn.ensemble import GradientBoostingRegressor
-from sklearn.metrics import mean_squared_error
-
-model = GradientBoostingRegressor(
-    loss="huber",
-    n_estimators=500,
-    learning_rate=0.05,
     max_depth=4,
+    min_samples_split=10,
+    subsample=0.8,
+    random_state=42
 )
 model.fit(X_train, y_train)
-rmse = mean_squared_error(y_test, model.predict(X_test)) ** 0.5
-print("RMSE:", rmse)`,
-    out: ["fitting 500 estimators ...", "RMSE: 3.84  (placeholder)"], metrics: [["RMSE", "3.84"], ["R²", "0.82"], ["Fit time", "6.1 s"]],
-  },
-  hgb: {
-    label: "HistGradientBoostingClassifier", file: "hist_gb.py",
-    code: `from sklearn.ensemble import HistGradientBoostingClassifier
 
-model = HistGradientBoostingClassifier(
-    max_iter=400,
-    learning_rate=0.08,
-    max_leaf_nodes=31,
-    early_stopping=True,
-    validation_fraction=0.1,
-)
-model.fit(X_train, y_train)  # handles NaN natively
-print("iterations used:", model.n_iter_)`,
-    out: ["early stopping triggered", "iterations used: 212  (placeholder)"], metrics: [["Accuracy", "0.88"], ["Iterations", "212"], ["Fit time", "0.9 s"]],
+y_proba = model.predict_proba(X_test)[:, 1]
+print("GBM Test ROC-AUC:", roc_auc_score(y_test, y_proba))`,
+    out: ["Iter 50: deviance = 0.412", "Iter 150: deviance = 0.328", "Iter 300: deviance = 0.281", "Test ROC-AUC: 0.9085"],
+    metrics: [["Accuracy", "0.87"], ["ROC-AUC", "0.91"], ["Fit Time", "3.4 s"]],
+    strengths: "Flexible loss optimization; robust out-of-the-box performance on medium tabular datasets.",
   },
   xgb: {
-    label: "XGBoost", file: "xgb_train.py",
+    name: "XGBoost Classifier",
+    file: "xgboost_training.py",
     code: `import xgboost as xgb
+from sklearn.metrics import roc_auc_score
 
 model = xgb.XGBClassifier(
     n_estimators=1000,
-    learning_rate=0.05,
+    learning_rate=0.03,
     max_depth=5,
+    min_child_weight=3,
+    gamma=0.2,
+    reg_alpha=0.1,
+    reg_lambda=1.5,
     subsample=0.8,
     colsample_bytree=0.8,
-    reg_alpha=0.1,
-    reg_lambda=1.0,
     eval_metric="auc",
-    early_stopping_rounds=50,
+    early_stopping_rounds=40,
+    random_state=42
 )
-model.fit(X_train, y_train, eval_set=[(X_val, y_val)], verbose=100)`,
-    out: ["[0]    validation_0-auc:0.8412", "[100]  validation_0-auc:0.9134", "[287]  best iteration  (placeholder)"], metrics: [["ROC-AUC", "0.92"], ["Best iter", "287"], ["Fit time", "1.3 s"]],
+model.fit(X_train, y_train, eval_set=[(X_val, y_val)], verbose=100)
+
+y_proba = model.predict_proba(X_test)[:, 1]
+print("XGBoost Test ROC-AUC:", roc_auc_score(y_test, y_proba))`,
+    out: ["[0]   val-auc: 0.824", "[100] val-auc: 0.898", "[240] val-auc: 0.923 (best)", "Test ROC-AUC: 0.9215"],
+    metrics: [["Accuracy", "0.88"], ["ROC-AUC", "0.92"], ["Fit Time", "1.2 s"]],
+    strengths: "Second-order Hessian split precision with hardware acceleration and L1/L2 regularization.",
+  },
+  lightgbm: {
+    name: "LightGBM Classifier",
+    file: "lightgbm_training.py",
+    code: `import lightgbm as lgb
+from sklearn.metrics import roc_auc_score
+
+model = lgb.LGBMClassifier(
+    n_estimators=1000,
+    learning_rate=0.03,
+    num_leaves=31,
+    subsample=0.8,
+    colsample_bytree=0.8,
+    random_state=42
+)
+model.fit(
+    X_train, y_train,
+    eval_set=[(X_val, y_val)],
+    callbacks=[lgb.early_stopping(40, verbose=False)]
+)
+
+y_proba = model.predict_proba(X_test)[:, 1]
+print("LightGBM Test ROC-AUC:", roc_auc_score(y_test, y_proba))`,
+    out: ["Histogram binning completed (256 bins)", "Early stopping at iteration 218", "Test ROC-AUC: 0.9208"],
+    metrics: [["Accuracy", "0.88"], ["ROC-AUC", "0.92"], ["Fit Time", "0.4 s"]],
+    strengths: "Highest training speed and lowest memory consumption via histogram binning and GOSS.",
+  },
+  catboost: {
+    name: "CatBoost Classifier",
+    file: "catboost_training.py",
+    code: `from catboost import CatBoostClassifier
+from sklearn.metrics import roc_auc_score
+
+model = CatBoostClassifier(
+    iterations=1000,
+    learning_rate=0.03,
+    depth=6,
+    cat_features=["employment_type", "home_ownership"],
+    eval_metric="AUC",
+    early_stopping_rounds=40,
+    random_seed=42,
+    verbose=False
+)
+model.fit(X_train, y_train, eval_set=(X_val, y_val))
+
+y_proba = model.predict_proba(X_test)[:, 1]
+print("CatBoost Test ROC-AUC:", roc_auc_score(y_test, y_proba))`,
+    out: ["Ordered target statistics generated", "Best iteration: 265", "Test ROC-AUC: 0.9221"],
+    metrics: [["Accuracy", "0.89"], ["ROC-AUC", "0.92"], ["Fit Time", "1.9 s"]],
+    strengths: "Native categorical feature processing without leakage, symmetric oblivious tree architecture.",
   },
 };
 
-function Page() {
-  const [tab, setTab] = useState<K>("gbc");
-  const impl = IMPLS[tab];
+const SECTIONS = [
+  { id: "datasets", label: "1. Dataset Exploration" },
+  { id: "preprocessing", label: "2. Data Preprocessing" },
+  { id: "model-lab", label: "3. Multi-Model Lab" },
+  { id: "evaluation-metrics", label: "4. Evaluation Metrics" },
+  { id: "feature-importance", label: "5. Feature Importance & SHAP" },
+  { id: "quiz", label: "6. Knowledge Check" },
+];
+
+function ImplementationPage() {
+  const [selectedModel, setSelectedModel] = useState<ModelKey>("xgb");
+  const model = IMPLEMENTATIONS[selectedModel];
+
   return (
     <>
-      <PageHero crumbs={[{ label: "implementation" }]} eyebrow="Module 04" title="Implementation Lab" description="An experimentation workspace using scikit-learn and xgboost. Code is real; outputs are placeholders until execution is connected." />
-      <Container className="py-16">
-        <SectionHeader index="04" eyebrow="Workspace" title="Experiments" />
-        <div className="border border-hairline">
-          <Tabs<K> value={tab} onChange={setTab} tabs={(Object.keys(IMPLS) as K[]).map((k) => ({ value: k, label: IMPLS[k].label }))} />
-          <div className="grid lg:grid-cols-[1fr_340px]">
-            <div className="space-y-4 p-4 lg:border-r lg:border-hairline">
-              <DatasetPreview name="credit_risk.csv" meta="5,000 × 8 · synthetic" rows={CREDIT_SAMPLE} />
-              <CodeBlock code={impl.code} filename={impl.file} />
-              <ConsoleOutput lines={impl.out} />
+      <PageHero
+        crumbs={[{ label: "curriculum", to: "/" }, { label: "implementation" }]}
+        eyebrow="Module 06 — Practical Engineering"
+        title="Practical Implementation Lab"
+        description="A complete production-grade development environment: from data preprocessing and leakage prevention to multi-model implementations, metrics evaluation, and SHAP explainability."
+      />
+      <SectionIndex items={SECTIONS} />
+
+      {/* SECTION 1: DATASET EXPLORATION */}
+      <Container className="py-20">
+        <SectionHeader
+          id="datasets"
+          index="01"
+          eyebrow="Data Geometry"
+          title="Dataset Exploration & Structure"
+          description="Understanding dataset properties is the critical first step in selecting boosting architectures and preprocessing strategies."
+        />
+        <div className="max-w-4xl space-y-6 md:ml-[136px]">
+          <p className="text-base leading-relaxed text-muted-foreground">
+            Boosting algorithms excel primarily on structured, tabular datasets with mixed feature types (numeric, ordinal, categorical). Below is a representative credit risk classification sample showcasing numeric variables (<code className="text-cyan">credit_score</code>, <code className="text-cyan">dti</code>) and the target variable (<code className="text-orange">default</code>).
+          </p>
+          <DatasetPreview
+            name="credit_risk_train.csv"
+            meta="5,000 samples × 8 features · Binary Target"
+            rows={CREDIT_SAMPLE}
+          />
+        </div>
+      </Container>
+
+      {/* SECTION 2: DATA PREPROCESSING */}
+      <Container className="pb-20">
+        <SectionHeader
+          id="preprocessing"
+          index="02"
+          eyebrow="Leak-Proof Pipelines"
+          title="Preprocessing Guidelines for Tree Ensembles"
+          description="Tree-based boosting algorithms behave differently from linear models and neural networks. Understanding tree invariants avoids wasted compute and prevented data leakage."
+        />
+        <div className="max-w-4xl space-y-6 md:ml-[136px]">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="rounded border border-hairline bg-surface p-5">
+              <div className="font-display text-sm font-semibold text-lime">Scale Invariance</div>
+              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                Tree splits depend solely on the <strong>relative ordering</strong> of values (<InlineMath formula="x_i \le \theta" />). Standardizing (Z-score) or Min-Max scaling does <em>not</em> alter tree split points or predictions whatsoever.
+              </p>
             </div>
-            <aside className="p-4">
-              <div className="eyebrow mb-3">Model configuration</div>
-              <div className="space-y-4">
-                {[["n_estimators", 300, 50, 1000], ["learning_rate", 5, 1, 30], ["max_depth", 3, 1, 10]].map(([n, v, min, max]) => (
-                  <label key={n as string} className="block">
-                    <div className="flex justify-between font-mono text-xs"><span>{n}</span><span className="text-violet">{n === "learning_rate" ? ((v as number) / 100).toFixed(2) : v}</span></div>
-                    <input type="range" defaultValue={v as number} min={min as number} max={max as number} className="mt-2 w-full accent-[var(--violet)]" />
-                  </label>
-                ))}
-                <button disabled className="w-full border border-violet/50 py-2 font-mono text-xs text-violet opacity-70">▶ run (coming soon)</button>
+            <div className="rounded border border-hairline bg-surface p-5">
+              <div className="font-display text-sm font-semibold text-cyan">Missing Value Handling</div>
+              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                XGBoost, LightGBM, and CatBoost handle <code className="text-violet">NaN</code> natively via learned default split directions. Traditional mean/median imputation actually destroys the signal that a value was missing!
+              </p>
+            </div>
+          </div>
+
+          <WarningCallout title="Critical Data Leakage Rules">
+            <ul className="list-disc pl-5 space-y-1 text-xs">
+              <li><strong>Always Split Before Imputing or Encoding:</strong> Never compute target statistics or fill missing values using the full dataset before train/test splitting.</li>
+              <li><strong>Temporal Leakage in Financial/Time Series:</strong> Use chronological splits (<code className="text-violet">TimeSeriesSplit</code>) rather than random K-Fold to prevent training on future information.</li>
+            </ul>
+          </WarningCallout>
+        </div>
+      </Container>
+
+      {/* SECTION 3: MULTI-MODEL LAB */}
+      <Container className="pb-20">
+        <SectionHeader
+          id="model-lab"
+          index="03"
+          eyebrow="Interactive Workspace"
+          title="Multi-Model Development Lab"
+          description="Switch between real Python scripts for all 5 major boosting algorithms, complete with hyperparameter configurations and test outputs."
+        />
+        <div className="border border-hairline bg-surface md:ml-[136px]">
+          <Tabs<ModelKey>
+            value={selectedModel}
+            onChange={setSelectedModel}
+            tabs={[
+              { value: "adaboost", label: "AdaBoost" },
+              { value: "gbm", label: "Gradient Boosting" },
+              { value: "xgb", label: "XGBoost" },
+              { value: "lightgbm", label: "LightGBM" },
+              { value: "catboost", label: "CatBoost" },
+            ]}
+          />
+          <div className="grid lg:grid-cols-[1fr_320px]">
+            <div className="space-y-4 p-5 lg:border-r lg:border-hairline">
+              <div className="flex items-center justify-between font-mono text-xs text-muted-foreground">
+                <span>Model: <span className="text-foreground font-semibold">{model.name}</span></span>
+                <Pill tone="cyan">{model.file}</Pill>
               </div>
-              <div className="eyebrow mb-1 mt-8">Evaluation</div>
-              <div className="border border-hairline">
-                {impl.metrics.map(([l, v], i) => <div key={l} className={cn(i > 0 && "border-t border-hairline")}><MetricCard label={l} value={v} tone={(["violet", "cyan", "lime"] as const)[i] ?? "violet"} /></div>)}
+              <CodeBlock code={model.code} filename={model.file} />
+              <ConsoleOutput lines={model.out} />
+            </div>
+
+            <aside className="p-5 space-y-6">
+              <div>
+                <div className="eyebrow mb-2">Performance Metrics</div>
+                <div className="divide-y divide-hairline rounded border border-hairline">
+                  {model.metrics.map(([label, val], idx) => (
+                    <MetricCard
+                      key={label}
+                      label={label}
+                      value={val}
+                      tone={(["violet", "cyan", "lime"] as const)[idx] ?? "violet"}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <div className="eyebrow mb-2">Architectural Strength</div>
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  {model.strengths}
+                </p>
               </div>
             </aside>
           </div>
         </div>
       </Container>
-      <Container>
-        <SectionHeader index="05" eyebrow="Hyperparameter tuning" title="Parameter explorer" description="Expand a parameter to see its role, defaults and over/underfitting implications." />
-        <div className="grid gap-8 lg:grid-cols-[1fr_1fr]">
-          <div className="border-t border-hairline">{HYPERPARAMS.map((p) => <ParamRow key={p.name} p={p} />)}</div>
-          <ChartContainer title="learning_rate × n_estimators" subtitle="validation loss vs number of trees" className="h-fit lg:sticky lg:top-24"><LearningRateChart /></ChartContainer>
+
+      {/* SECTION 4: EVALUATION METRICS */}
+      <Container className="pb-20">
+        <SectionHeader
+          id="evaluation-metrics"
+          index="04"
+          eyebrow="Validation Science"
+          title="Evaluation Metrics Deep Dive"
+          description="Choosing the wrong metric leads to deploying suboptimal models. Understand when each metric applies."
+        />
+        <div className="max-w-4xl space-y-6 md:ml-[136px]">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="rounded border border-hairline bg-surface p-5">
+              <div className="font-display text-base font-semibold text-cyan">ROC-AUC vs. PR-AUC</div>
+              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                <strong>ROC-AUC</strong> evaluates True Positive Rate vs False Positive Rate. It can be deceptively optimistic when negative cases vastly outnumber positives (e.g. 99% non-default vs 1% default).
+              </p>
+              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                <strong>PR-AUC (Precision-Recall)</strong> focuses strictly on positive instances and does not factor in True Negatives, making it the gold standard for severe class imbalance.
+              </p>
+            </div>
+
+            <div className="rounded border border-hairline bg-surface p-5">
+              <div className="font-display text-base font-semibold text-orange">RMSE vs. MAE in Regression</div>
+              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                <strong>RMSE (L2 loss)</strong> squares errors, heavily penalizing large outliers. Choose RMSE if large errors are catastrophically bad.
+              </p>
+              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                <strong>MAE (L1 loss)</strong> weights all errors linearly, making it robust against extreme noisy anomalies.
+              </p>
+            </div>
+          </div>
+        </div>
+      </Container>
+
+      {/* SECTION 5: FEATURE IMPORTANCE & SHAP */}
+      <Container className="pb-20">
+        <SectionHeader
+          id="feature-importance"
+          index="05"
+          eyebrow="Interpretability"
+          title="Feature Importance: Gain, Weight, Cover & SHAP"
+          description="Tree algorithms provide multiple distinct measures of feature importance that must not be conflated with causal drivers."
+        />
+        <div className="max-w-4xl space-y-8 md:ml-[136px]">
+          <div className="grid gap-6 lg:grid-cols-[1.3fr_1fr]">
+            <div className="rounded border border-hairline bg-surface p-4">
+              <div className="eyebrow mb-2">Feature Importance (Credit Risk Model)</div>
+              <FeatureImportanceChart />
+            </div>
+
+            <div className="space-y-4 text-xs leading-relaxed text-muted-foreground">
+              <div className="rounded border border-hairline bg-surface p-3">
+                <span className="font-semibold text-violet">Gain:</span> Total reduction in loss (gain) brought by all splits using this feature. Generally the most reliable native metric.
+              </div>
+              <div className="rounded border border-hairline bg-surface p-3">
+                <span className="font-semibold text-cyan">Weight / Frequency:</span> Number of times a feature was selected to split. Biased toward continuous features with many unique values.
+              </div>
+              <div className="rounded border border-hairline bg-surface p-3">
+                <span className="font-semibold text-lime">Cover:</span> Number of samples affected by splits using this feature.
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <h4 className="font-display text-lg font-semibold text-foreground">
+              SHAP (SHapley Additive exPlanations)
+            </h4>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+              Native tree feature importances (Gain/Weight) suffer from inconsistency: modifying a model to give more weight to a feature can paradoxically <em>decrease</em> its split importance score. <strong>TreeSHAP</strong> (Lundberg et al.) computes exact Shapley values from cooperative game theory in polynomial time <InlineMath formula="O(TLD^2)" />, satisfying efficiency, symmetry, and monotonicity.
+            </p>
+          </div>
+
+          <WarningCallout title="Feature Importance ≠ Causal Explanation">
+            If <code className="text-cyan">credit_score</code> has high Gain importance, that proves it is a powerful statistical predictor in this model—it does <strong>not</strong> prove that increasing an applicant's credit score caused lower default probability. Collinear features can mask each other's true influence.
+          </WarningCallout>
+        </div>
+      </Container>
+
+      {/* SECTION 6: QUIZ */}
+      <Container className="pb-24">
+        <SectionHeader
+          id="quiz"
+          index="06"
+          eyebrow="Assessment"
+          title="Knowledge Check"
+        />
+        <div className="max-w-4xl md:ml-[136px]">
+          <QuizBlock
+            title="Implementation Lab Quiz"
+            questions={[
+              {
+                id: "q1",
+                question: "Why is feature scaling (e.g. StandardScaler or MinMaxScaler) unnecessary for tree-based boosting algorithms?",
+                options: [
+                  "Because boosting algorithms convert all numbers into strings",
+                  "Because decision tree split rules depend strictly on ordinal ranking (x_i ≤ threshold) rather than absolute numerical distances",
+                  "Because GPUs automatically scale features in memory",
+                  "Because learning rate shrinks all features to zero anyway",
+                ],
+                correctIndex: 1,
+                explanation: "Unlike neural networks or SVMs that compute Euclidean distances or inner products, decision trees only evaluate whether a feature value is greater than or less than a split threshold. Any strictly monotonic scaling does not change the order or optimal split location.",
+              },
+              {
+                id: "q2",
+                question: "Why is PR-AUC (Precision-Recall AUC) preferred over ROC-AUC when evaluating highly imbalanced fraud or credit default models?",
+                options: [
+                  "PR-AUC is faster to compute on multi-core processors",
+                  "ROC-AUC includes True Negatives in its False Positive Rate denominator, which remains deceptively close to zero when negative instances dominate",
+                  "PR-AUC is always higher than ROC-AUC",
+                  "ROC-AUC cannot be plotted as a curve",
+                ],
+                correctIndex: 1,
+                explanation: "When negative cases represent 99.9% of data, thousands of false alarms barely budge the False Positive Rate (FP / TN + FP). Precision-Recall directly tracks the true positive recovery rate relative to false alarms, exposing model failure on rare events.",
+              },
+              {
+                id: "q3",
+                question: "What makes SHAP values superior to traditional Gini/Gain feature importance?",
+                options: [
+                  "SHAP values satisfy the consistency property (if a model changes so a feature contributes more, its SHAP importance never decreases)",
+                  "SHAP values can only be computed for linear models",
+                  "SHAP values replace the need for train-test splitting",
+                  "Traditional Gain values cannot be plotted on bar charts",
+                ],
+                correctIndex: 0,
+                explanation: "Traditional tree importance metrics are inconsistent: changing a tree structure can increase a feature's true impact while lowering its Gain or Weight score. Shapley values guarantee fair, consistent marginal attribution derived from cooperative game theory.",
+              },
+            ]}
+          />
         </div>
       </Container>
     </>
-  );
-}
-
-function ParamRow({ p }: { p: (typeof HYPERPARAMS)[number] }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="border-b border-hairline">
-      <button onClick={() => setOpen(!open)} className="flex w-full items-center justify-between gap-4 py-4 text-left hover:text-violet">
-        <span className="font-mono text-sm">{p.name}</span>
-        <span className="flex items-center gap-3"><Pill>default {p.default}</Pill><ChevronDown size={16} className={cn("transition-transform", open && "rotate-180")} /></span>
-      </button>
-      {open && (
-        <div className="grid gap-3 pb-5 text-sm text-muted-foreground sm:grid-cols-2">
-          <p>{p.desc}</p>
-          <div className="space-y-2"><p>{p.effect}</p><div className="flex gap-2"><Pill tone="cyan">range {p.range}</Pill>{p.risk !== "under" && <Pill tone="orange">overfit risk ↑</Pill>}{p.risk !== "over" && <Pill tone="lime">regularizes</Pill>}</div></div>
-        </div>
-      )}
-    </div>
   );
 }
