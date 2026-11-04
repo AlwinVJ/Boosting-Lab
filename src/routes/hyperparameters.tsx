@@ -21,7 +21,7 @@ export const Route = createFileRoute("/hyperparameters")({
 
 interface HyperparamDef {
   name: string;
-  algo: "GBM" | "XGBoost" | "Both";
+  algo: "GBM" | "XGBoost" | "LightGBM" | "CatBoost" | "Both" | "All";
   defaultVal: string;
   range: string;
   type: "Capacity" | "Regularization" | "Sampling" | "Optimization";
@@ -33,18 +33,18 @@ interface HyperparamDef {
 const ALL_PARAMS: HyperparamDef[] = [
   {
     name: "learning_rate (η / ν)",
-    algo: "Both",
+    algo: "All",
     defaultVal: "0.1",
     range: "0.005 – 0.3",
     type: "Optimization",
     desc: "Shrinkage factor applied to each tree's contribution before adding to the ensemble.",
     impact: "Lower values (0.01 – 0.05) yield superior generalization but require proportionally higher n_estimators.",
-    guideline: "Set to 0.05 or 0.02 early in development and pair with early stopping.",
+    guideline: "Set to 0.05 or 0.02 early in development and pair with early stopping. Do not lower without increasing estimators.",
   },
   {
-    name: "n_estimators",
-    algo: "Both",
-    defaultVal: "100",
+    name: "n_estimators / iterations",
+    algo: "All",
+    defaultVal: "100 (default) / 1000+ (tuned)",
     range: "100 – 5000",
     type: "Capacity",
     desc: "Total number of sequential boosting iterations (trees).",
@@ -54,22 +54,32 @@ const ALL_PARAMS: HyperparamDef[] = [
   {
     name: "max_depth",
     algo: "Both",
-    defaultVal: "3 (GBM) / 6 (XGB)",
+    defaultVal: "3 (GBM) / 6 (XGB) / 6 (CatBoost)",
     range: "2 – 10",
     type: "Capacity",
     desc: "Maximum depth of individual decision trees. Directly controls feature interaction order.",
     impact: "Depth d captures interactions between up to d features. Deep trees (d > 8) quickly memorize noise.",
-    guideline: "Start with depth 3 to 5 for tabular datasets. Rarely exceed 8 unless signal is highly interactive.",
+    guideline: "Start with depth 3 to 5 for tabular datasets. In CatBoost, symmetric trees of depth 6 are standard.",
   },
   {
-    name: "min_child_weight",
+    name: "num_leaves",
+    algo: "LightGBM",
+    defaultVal: "31",
+    range: "15 – 255",
+    type: "Capacity",
+    desc: "Maximum number of leaves in leaf-wise tree growth. The primary complexity knob in LightGBM.",
+    impact: "Controls tree capacity directly; num_leaves < 2^(max_depth) prevents excessive depth overfitting.",
+    guideline: "Keep num_leaves around 31–63 for medium tabular data; pair with min_data_in_leaf to prevent small leaves.",
+  },
+  {
+    name: "min_child_weight / min_child_samples",
     algo: "XGBoost",
-    defaultVal: "1",
-    range: "1 – 20",
+    defaultVal: "1 (XGB) / 20 (LightGBM)",
+    range: "1 – 50",
     type: "Regularization",
-    desc: "Minimum sum of instance weight (Hessian) needed in a child node.",
+    desc: "Minimum sum of instance weight (Hessian) or sample count needed in a leaf node.",
     impact: "Higher values prevent trees from splitting down to single outlier instances.",
-    guideline: "In imbalanced classification, increase to 3–10 to avoid creating leaves dominated by rare noise.",
+    guideline: "In imbalanced classification, increase to 3–10 in XGBoost to avoid creating leaves dominated by rare noise.",
   },
   {
     name: "gamma (γ / min_split_loss)",
@@ -83,7 +93,7 @@ const ALL_PARAMS: HyperparamDef[] = [
   },
   {
     name: "subsample",
-    algo: "Both",
+    algo: "All",
     defaultVal: "1.0",
     range: "0.5 – 1.0",
     type: "Sampling",
@@ -111,6 +121,16 @@ const ALL_PARAMS: HyperparamDef[] = [
     impact: "reg_alpha encourages sparsity (zeroing leaf weights); reg_lambda smooths extreme weights toward zero.",
     guideline: "Increase reg_lambda (e.g. 2–10) when predictions have high variance or in collinear feature sets.",
   },
+  {
+    name: "l2_leaf_reg",
+    algo: "CatBoost",
+    defaultVal: "3.0",
+    range: "1.0 – 10.0",
+    type: "Regularization",
+    desc: "L2 regularization term of the cost function on symmetric tree leaves.",
+    impact: "Penalizes large leaf values, regularizing leaf outputs and reducing variance in predictions.",
+    guideline: "Defaults are very strong in CatBoost (3.0); tune within 2.0–8.0 on noisy tabular datasets.",
+  },
 ];
 
 const SECTIONS = [
@@ -127,7 +147,7 @@ function HyperparametersPage() {
   const [openParam, setOpenParam] = useState<string | null>("learning_rate (η / ν)");
 
   const filteredParams = ALL_PARAMS.filter(
-    (p) => filter === "All" || p.algo === filter || p.algo === "Both"
+    (p) => filter === "All" || p.algo === filter || p.algo === "Both" || p.algo === "All"
   );
 
   return (
@@ -171,8 +191,8 @@ function HyperparametersPage() {
           description="Filter and inspect each parameter's mathematical role, default values, and impact on under/overfitting."
         />
         <div className="max-w-4xl md:ml-[136px]">
-          <div className="mb-6 flex gap-2">
-            {["All", "XGBoost", "GBM"].map((tab) => (
+          <div className="mb-6 flex flex-wrap gap-2">
+            {["All", "XGBoost", "LightGBM", "CatBoost", "GBM"].map((tab) => (
               <button
                 key={tab}
                 onClick={() => setFilter(tab)}
