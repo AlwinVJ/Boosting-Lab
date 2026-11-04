@@ -48,10 +48,10 @@ function CaseStudyPage() {
           </span>
         </div>
         <div className="grid grid-cols-2 border border-hairline lg:grid-cols-4 [&>*]:border-hairline [&>*:not(:last-child)]:border-r">
-          <MetricCard label="Best Model (XGBoost)" value="0.92" delta="+0.08" hint="ROC-AUC vs Logistic Reg" tone="violet" />
-          <MetricCard label="Target Recall" value="74%" delta="+12%" hint="at 82% precision (baseline)" tone="cyan" />
-          <MetricCard label="Simulated Loss Cut" value="-$4.2M" delta="-18%" hint="on $100M simulated book" tone="lime" />
-          <MetricCard label="Inference Latency" value="1.2 ms" delta="p99" hint="single-instance CPU inference" tone="orange" />
+          <MetricCard label="Best Model (XGBoost)" value="0.92" delta="+0.08" hint="ROC-AUC vs Logistic Reg (illustrative)" tone="violet" />
+          <MetricCard label="Default Recall" value="87.8%" delta="+22.9%" hint="at θ = 0.18 vs standard θ = 0.50" tone="cyan" />
+          <MetricCard label="Expected Cost Cut" value="-$426k" delta="-53.0%" hint="per 1,000 cohort at θ = 0.18" tone="lime" />
+          <MetricCard label="Inference Latency" value="1.2 ms" delta="p99" hint="single-instance CPU benchmark" tone="orange" />
         </div>
       </Container>
 
@@ -158,7 +158,7 @@ function CaseStudyPage() {
         <div className="max-w-4xl space-y-6 md:ml-[136px]">
           <DatasetPreview
             name="synthetic_loan_portfolio.csv"
-            meta="5,000 synthetic observations × 8 features · Default Prevalence = 14.8% · Pedagogical Benchmark"
+            meta="5-record demonstration preview from 5,000-observation synthetic schema · Default Prevalence = 14.8% · Pedagogical Demonstration"
             rows={CREDIT_SAMPLE}
           />
 
@@ -487,16 +487,18 @@ models = {
 }
 
 results = {}
+# Illustrative demonstration script (demonstrating model evaluation on validation split)
 for name, model in models.items():
     model.fit(X_train, y_train)
-    # Extract calibrated continuous probabilities of default: P(y=1|X)
-    probs = model.predict_proba(X_test)[:, 1]
+    # Caution: raw predict_proba outputs are NOT automatically calibrated probabilities!
+    # In institutional risk modeling, wrap with CalibratedClassifierCV (Platt or Isotonic)
+    raw_probs = model.predict_proba(X_test)[:, 1]
     
     results[name] = {
-        "ROC-AUC": roc_auc_score(y_test, probs),
-        "PR-AUC": average_precision_score(y_test, probs),
-        "Brier Score": brier_score_loss(y_test, probs),
-        "Log Loss": log_loss(y_test, probs)
+        "ROC-AUC": roc_auc_score(y_test, raw_probs),
+        "PR-AUC": average_precision_score(y_test, raw_probs),
+        "Brier Score": brier_score_loss(y_test, raw_probs),
+        "Log Loss": log_loss(y_test, raw_probs)
     }`}</code>
             </pre>
           </div>
@@ -506,8 +508,8 @@ for name, model in models.items():
             points={[
               "Logistic Regression achieves respectable baseline accuracy (81%) and AUC (0.84) but suffers on Recall (62%) due to inability to model non-linear interactions without manual polynomial expansion.",
               "Random Forest improves AUC to 0.89 and Recall to 68% by decorrelating decision trees across bagging subsamples.",
-              "XGBoost captures complex non-linear interactions (e.g. low credit score only causing default when DTI exceeds 40%) to achieve highest ROC-AUC (0.92) and Recall (74%).",
-              "Probability Calibration verification confirms that XGBoost predictions track empirical default rates across binned deciles, making it safe for Expected Credit Loss (ECL) calculation.",
+              "XGBoost captures complex non-linear interactions (e.g. low credit score only causing default when DTI exceeds 40%) to achieve highest ROC-AUC (0.92) and Recall (74% at threshold 0.50).",
+              "Probability Calibration Requirement: Raw predict_proba outputs from tree boosting reflect ranking order but are typically uncalibrated due to margin expansion. Post-hoc calibration (Platt scaling or isotonic regression) is required before using PD estimates in regulatory Expected Credit Loss (ECL = PD × LGD × EAD) calculations.",
             ]}
           />
         </div>
@@ -579,26 +581,26 @@ for name, model in models.items():
           </WarningCallout>
 
           <WorkedExample
-            title="Threshold Shift Impact on Portfolio Performance (1,000 Applicant Benchmark Cohort)"
-            description="Evaluating 1,000 loan applicants with a baseline default prevalence of 14.8% (148 actual defaults, 852 actual non-defaulters)."
+            title="Threshold Shift Impact on Portfolio Performance (1,000-Applicant Illustrative Cohort)"
+            description="Evaluating an illustrative 1,000-applicant benchmark cohort with 14.8% default prevalence (148 actual defaults, 852 actual non-defaulters). Note: The confusion matrices below represent an illustrative benchmark simulation to demonstrate cost-sensitive threshold dynamics; cost reductions reflect this specific 1,000-loan cohort size."
             steps={[
               {
                 label: "Operating Point 1: Standard Symmetric Threshold (θ = 0.50)",
-                calculation: "Approved: 880 applicants (120 rejected).\n• Confusion Matrix: 96 TP, 20 FP, 832 TN, 52 FN.\n• False Negatives (defaults approved): 52 × $15,000 = $780,000 write-off.\n• False Positives (good borrowers rejected): 20 × $1,200 = $24,000 lost profit.\nTotal Portfolio Loss: $780,000 + $24,000 = $804,000. Recall: 64.9% (96/148).",
-                result: "Net Portfolio Cost: $804,000",
+                calculation: "Approved: 884 applicants (116 rejected).\n• Confusion Matrix: 96 TP, 20 FP, 832 TN, 52 FN.\n• Totals: TP + FN = 148 defaults; TN + FP = 852 non-defaults.\n• False Negatives (defaults approved): 52 × $15,000 = $780,000 write-off.\n• False Positives (good borrowers rejected): 20 × $1,200 = $24,000 lost profit.\nTotal Portfolio Loss: $780,000 + $24,000 = $804,000.\nRecall: 64.9% (96/148). Precision: 82.8% (96/116).",
+                result: "Baseline Portfolio Cost: $804,000",
                 explanation: "The default 0.50 cutoff allows 52 defaulting borrowers to receive funding, creating severe bad-debt write-offs because the classifier treats $1,200 errors and $15,000 errors identically.",
               },
               {
                 label: "Operating Point 2: Balanced Production Operating Threshold (θ = 0.18)",
-                calculation: "Approved: 760 applicants (240 rejected).\n• Confusion Matrix: 130 TP, 90 FP, 762 TN, 18 FN.\n• False Negatives: drops from 52 to 18 (130 defaults caught). 18 × $15,000 = $270,000.\n• False Positives: rises to 90 applicants. 90 × $1,200 = $108,000 lost profit.\nTotal Portfolio Loss: $270,000 + $108,000 = $378,000. Recall: 87.8% (130/148).",
-                result: "Net Portfolio Cost: $378,000 (Annual Savings: $426,000 / 53.0%)",
-                explanation: "A balanced operating threshold favored by risk committees: it cuts bad-debt write-offs by 65% while maintaining acceptable 76% commercial loan origination volume.",
+                calculation: "Approved: 780 applicants (220 rejected).\n• Confusion Matrix: 130 TP, 90 FP, 762 TN, 18 FN.\n• Totals: TP + FN = 148 defaults; TN + FP = 852 non-defaults.\n• False Negatives: drops from 52 to 18 (130 defaults caught). 18 × $15,000 = $270,000.\n• False Positives: rises to 90 applicants. 90 × $1,200 = $108,000 lost profit.\nTotal Portfolio Loss: $270,000 + $108,000 = $378,000.\nRecall: 87.8% (130/148). Precision: 59.1% (130/220).",
+                result: "Net Portfolio Cost: $378,000 (Cohort Cost Reduction: $426,000 / 53.0%)",
+                explanation: "A balanced operating threshold favored by risk committees: it cuts bad-debt write-offs by 65% while maintaining acceptable 78.0% commercial loan origination volume (approving 780 of 1,000 applicants).",
               },
               {
                 label: "Operating Point 3: Theoretical Bayes-Optimal Cutoff (θ* ≈ 0.074)",
-                calculation: "Approved: 676 applicants (324 rejected).\n• Confusion Matrix: 142 TP, 180 FP, 672 TN, 6 FN.\n• False Negatives: drops to 6 (142 defaults caught). 6 × $15,000 = $90,000.\n• False Positives: rises to 180 applicants. 180 × $1,200 = $216,000 lost profit.\nTotal Portfolio Loss: $90,000 + $216,000 = $306,000. Recall: 95.9% (142/148).",
-                result: "Net Portfolio Cost: $306,000 (Annual Savings: $498,000 / 61.9%)",
-                explanation: "Achieves the minimum possible expected monetary loss under well-calibrated probabilities. However, rejecting 32.4% of total applicants reduces market share, which is why commercial lenders often select intermediate points like θ = 0.18.",
+                calculation: "Approved: 678 applicants (322 rejected).\n• Confusion Matrix: 142 TP, 180 FP, 672 TN, 6 FN.\n• Totals: TP + FN = 148 defaults; TN + FP = 852 non-defaults.\n• False Negatives: drops to 6 (142 defaults caught). 6 × $15,000 = $90,000.\n• False Positives: rises to 180 applicants. 180 × $1,200 = $216,000 lost profit.\nTotal Portfolio Loss: $90,000 + $216,000 = $306,000.\nRecall: 95.9% (142/148). Precision: 44.1% (142/322).",
+                result: "Net Portfolio Cost: $306,000 (Cohort Cost Reduction: $498,000 / 61.9%)",
+                explanation: "Achieves the minimum possible expected monetary loss under well-calibrated probabilities. However, declining 32.2% of total applicants reduces origination volume (approval rate: 67.8%), illustrating why lenders subject to commercial growth targets often select intermediate points like θ = 0.18.",
               },
             ]}
             conclusion="Machine learning predictions only translate into business value when coupled with cost-aware decision thresholding calibrated to financial loss matrices."
@@ -709,13 +711,16 @@ for name, model in models.items():
             </div>
           </div>
 
-          <WarningCallout title="CFPB Circular 2022-03: Adverse Action Compliance Warning">
+          <WarningCallout title="Adverse Action Notice Compliance & Regulatory Framework (ECOA / Reg B & FCRA)">
             <div className="space-y-2 text-xs leading-relaxed">
               <p>
-                <strong>The Consumer Financial Protection Bureau (CFPB) Circular 2022-03</strong> affirmed that creditors using complex algorithmic and machine learning models cannot evade adverse action notice requirements under the Equal Credit Opportunity Act (ECOA / Regulation B, 12 CFR § 1002.9) and the Fair Credit Reporting Act (FCRA, 15 U.S.C. § 1681m).
+                <strong>Statutory Mandates under ECOA &amp; FCRA:</strong> Creditors using algorithmic and machine learning models remain bound by strict adverse action notice requirements under the Equal Credit Opportunity Act (ECOA, <a href="https://www.consumerfinance.gov/rules-policy/regulations/1002/9/" target="_blank" rel="noopener noreferrer" className="text-cyan underline">15 U.S.C. § 1691 / Regulation B, 12 CFR § 1002.9</a>) and the Fair Credit Reporting Act (FCRA, <a href="https://www.ftc.gov/legal-library/browse/statutes/fair-credit-reporting-act" target="_blank" rel="noopener noreferrer" className="text-cyan underline">15 U.S.C. § 1681m</a>). Lenders must provide specific, principal reasons whenever adverse action is taken.
               </p>
               <p>
-                <strong>Critical Legal Precedent:</strong> Creditors cannot rely on post-hoc explanation tools (such as SHAP or LIME) if they produce approximate, unstable, or fabricated reasons that do not accurately reflect the actual factors considered by the model. Furthermore, the largest SHAP values do <em>not</em> automatically constitute legally defensible adverse action reasons: creditors must verify that explanations are truthful, stable, and do not reflect disguised unlawful discrimination against protected classes.
+                <strong>Regulatory Status Note (May 2025 Review):</strong> While CFPB Consumer Financial Protection Circulars 2022-03 and 2023-03 (which previously addressed black-box AI and adverse action notices) were officially <em>withdrawn on May 12, 2025</em>, the underlying statutory obligations under ECOA and Regulation B continue with full force of federal law. Creditors cannot rely on post-hoc explanation tools (such as SHAP or LIME) if they produce approximate, unstable, or fabricated reasons that do not accurately reflect the actual factors considered by the model. Furthermore, top SHAP values do <em>not</em> automatically constitute legally defensible adverse action reasons: explanations must be verified as truthful, stable, and free from disguised proxy discrimination against protected classes.
+              </p>
+              <p className="font-mono text-[11px] text-muted-foreground/80">
+                * Legal Disclaimer: Regulatory requirements reflect US statutes and supervisory guidance as of mid-2025. This content is intended for pedagogical and educational purposes only and does not constitute legal or regulatory compliance advice.
               </p>
             </div>
           </WarningCallout>
@@ -781,9 +786,9 @@ for feat_name, val in zip(X.columns, applicant_shap.values):
                 </p>
               </div>
               <div className="rounded border border-hairline bg-surface p-4 space-y-1.5">
-                <span className="font-mono font-semibold text-orange">CFPB Circulars 2022-03 &amp; 2023-03</span>
+                <span className="font-mono font-semibold text-orange">CFPB Circulars 2022-03 &amp; 2023-03 (Withdrawn May 12, 2025)</span>
                 <p className="text-muted-foreground">
-                  The CFPB reaffirmed that creditors cannot use &quot;black-box&quot; machine learning algorithms to evade adverse action requirements. Post-hoc explanation tools (SHAP/LIME) that produce unstable or fabricated reasons violate federal law.
+                  CFPB Circulars 2022-03 and 2023-03 addressed black-box algorithms and adverse action notices. Although both circulars were formally withdrawn on May 12, 2025, mandatory adverse action duties persist directly under statutory authority: ECOA (15 U.S.C. § 1691), Regulation B (12 CFR § 1002.9), and FCRA (15 U.S.C. § 1681m).
                 </p>
               </div>
               <div className="rounded border border-hairline bg-surface p-4 space-y-1.5">
@@ -909,24 +914,24 @@ for feat_name, val in zip(X.columns, applicant_shap.values):
                 question: "Why does a lender operating along an empirical cost curve choose θ = 0.18 over the theoretical Bayes-optimal cutoff θ* ≈ 0.074?",
                 options: [
                   "Because computers cannot calculate decimal thresholds accurately",
-                  "Setting θ = 0.074 rejects 32.4% of all applicants, hurting loan origination targets and market share, while θ = 0.18 captures 87.8% of defaults and approves 76% of applicants",
+                  "Setting θ = 0.074 rejects 32.2% of all applicants, hurting loan origination targets and market share, while θ = 0.18 captures 87.8% of defaults and approves 78.0% of applicants",
                   "Because banks are legally required by ECOA to accept exactly 90% of all applicants",
                   "Because XGBoost probabilities always sum to 2.0",
                 ],
                 correctIndex: 1,
-                explanation: "While θ* ≈ 0.074 mathematically minimizes pure expected loss under perfect probability calibration, retail banks must balance loss reduction against commercial origination volume. Operating at θ = 0.18 achieves 85% of theoretical financial savings while approving viable commercial volume.",
+                explanation: "While θ* ≈ 0.074 mathematically minimizes pure expected loss under calibrated probabilities, retail banks must balance loss reduction against commercial origination volume. Operating at θ = 0.18 achieves 85% of theoretical financial savings while approving 78.0% of applicant volume.",
               },
               {
                 id: "q3",
                 question: "How do Shapley additive explanations (SHAP) assist lenders with adverse action requirements under FCRA and ECOA (Regulation B)?",
                 options: [
                   "They grant automatic legal immunity from fair lending audits and guarantee 0% model error",
-                  "They provide mathematically consistent local feature attributions in log-odds space, helping identify the principal factors driving an individual credit denial under CFPB Circular 2022-03 guidelines",
+                  "They provide mathematically consistent local feature attributions in log-odds space, helping identify the principal factors driving an individual credit denial under ECOA / Regulation B (§ 1002.9) and FCRA mandates",
                   "They automatically scrub all demographic variables and proxy features from the training pipeline",
                   "They eliminate the need for independent model validation required by Federal Reserve SR 11-7",
                 ],
                 correctIndex: 1,
-                explanation: "Under FCRA and ECOA (Regulation B), lenders must disclose the principal specific factors leading to adverse action. CFPB Circular 2022-03 requires that reasons derived from complex algorithms accurately reflect the factors considered. TreeSHAP quantifies exact local feature attributions, though creditors must still verify that reasons are truthful, stable, and compliant with fair lending laws.",
+                explanation: "Under FCRA (15 U.S.C. § 1681m) and ECOA / Regulation B (12 CFR § 1002.9), lenders must disclose the principal specific factors leading to adverse action. While CFPB Circulars 2022-03 and 2023-03 were withdrawn in May 2025, underlying statutory duties mandate that reasons accurately reflect model inputs. TreeSHAP quantifies exact local feature attributions, though creditors must verify that explanations are truthful, stable, and legally compliant.",
               },
               {
                 id: "q4",

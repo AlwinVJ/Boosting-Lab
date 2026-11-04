@@ -1,4 +1,7 @@
-// Placeholder content and data. All metrics are illustrative, not experimental results.
+// DATA TRANSPARENCY NOTICE:
+// All tabular rows, metric cards, model evaluation scores, and curves in this file are illustrative
+// synthetic pedagogical demonstrations designed for educational instruction, not audited empirical results.
+// CREDIT_SAMPLE provides 5 demonstration rows from a synthetic loan schema; MODEL_METRICS and FEATURES are illustrative benchmarks.
 
 export const MODULES = [
   { id: "01", title: "Boosting Fundamentals", to: "/fundamentals", time: "2.5 h", topics: ["Weak learners", "Sequential learning", "Bagging vs boosting"] },
@@ -58,9 +61,9 @@ export const ALGORITHMS: Algorithm[] = [
   {
     key: "lightgbm", name: "LightGBM", year: "2017", author: "Ke et al. (Microsoft)", color: "var(--lime)",
     tagline: "Histogram-based, leaf-wise growth for speed.",
-    overview: "Discretizes continuous features into 256 integer bins and grows trees leaf-wise (best-first), powered by GOSS sampling and exclusive feature bundling (NeurIPS 2017).",
+    overview: "Discretizes continuous features into integer histogram bins (default max_bin=255, 8-bit representation) and grows trees leaf-wise (best-first), powered by GOSS sampling and exclusive feature bundling (NeurIPS 2017).",
     mechanism: "Splits the leaf with maximum loss reduction; GOSS retains high-gradient samples and downsamples low-gradient instances.",
-    strengths: ["Fast training on large datasets (N > 10⁵)", "Low memory consumption via 8-bit histograms", "Native integer categorical binning"],
+    strengths: ["High training throughput on large tabular datasets", "Low memory consumption via histogram binning", "Native integer categorical binning"],
     limitations: ["Leaf-wise growth can overfit small datasets without max_depth / min_data_in_leaf constraints", "Sensitive to num_leaves"],
     applications: ["Large-scale recommendations", "Search ranking", "High-throughput tabular pipelines"],
     traits: { speed: 5, accuracy: 5, categorical: 3, tuning: 3 },
@@ -68,10 +71,10 @@ export const ALGORITHMS: Algorithm[] = [
   {
     key: "catboost", name: "CatBoost", year: "2017 / 2018", author: "Prokhorenkova et al. (Yandex)", color: "var(--foreground)",
     tagline: "Ordered boosting with native categorical encoding.",
-    overview: "Mitigates target leakage and prediction shift via permutation-driven Ordered Boosting, with native categorical encoding and symmetric oblivious trees (Dorogush 2017; NeurIPS 2018).",
-    mechanism: "Permutation-based target statistics prevent leakage; symmetric oblivious trees evaluate splits as bitwise SIMD lookups.",
-    strengths: ["State-of-the-art native categorical handling", "Resistant to prediction shift", "Ultra-fast microsecond CPU inference"],
-    limitations: ["Slower training on CPU with default depth settings", "High memory usage with numerous high-cardinality interaction pairs"],
+    overview: "Mitigates prediction shift and permutation-level target leakage via Ordered Boosting, with online ordered target statistics and symmetric oblivious trees (Dorogush 2017; NeurIPS 2018).",
+    mechanism: "Permutation-based target statistics prevent self-target leakage in categorical encoding; symmetric oblivious trees evaluate splits as bitwise SIMD lookups.",
+    strengths: ["Native categorical handling with prior smoothing", "Resistant to prediction shift", "Ultra-fast microsecond CPU inference"],
+    limitations: ["Slower training on CPU with default depth settings", "High memory usage with numerous high-cardinality interaction pairs", "Does not prevent upstream pipeline data leakage"],
     applications: ["E-commerce and retail with rich categorical features", "Search ranking", "Low-latency production scoring"],
     traits: { speed: 3, accuracy: 5, categorical: 5, tuning: 5 },
   },
