@@ -101,7 +101,7 @@ function AlgorithmsPage() {
           index="02"
           eyebrow="Categorical Excellence"
           title="CatBoost: Ordered Boosting & Oblivious Trees"
-          description="Developed by Yandex in 2017 (Prokhorenkova et al.), CatBoost eliminates target leakage, handles high-cardinality categorical features natively, and uses symmetric decision structures."
+          description="Developed by Yandex researchers (Dorogush et al. 2017 initial release; Prokhorenkova et al. NeurIPS 2018), CatBoost eliminates target leakage, handles high-cardinality categorical features natively, and uses symmetric decision structures."
         />
         <div className="max-w-4xl space-y-8 md:ml-[136px]">
           <div>
@@ -164,18 +164,21 @@ function AlgorithmsPage() {
         />
         <div className="max-w-4xl space-y-6 md:ml-[136px]">
           <ComparisonTable
-            columns={["Feature / Algorithm", "AdaBoost", "GBM (Scikit-Learn)", "XGBoost", "LightGBM", "CatBoost"]}
+            columns={["Feature / Dimension", "AdaBoost", "GBM (Scikit-Learn)", "XGBoost", "LightGBM", "CatBoost"]}
             rows={[
-              ["First Author & Year", "Freund & Schapire (1995)", "J. Friedman (2001)", "Chen & Guestrin (2016)", "Ke et al. (Microsoft 2017)", "Prokhorenkova (Yandex 2017)"],
-              ["Loss Optimization", "Exponential Loss only", "1st-order gradient descent", "2nd-order Taylor (g & h)", "2nd-order Taylor (g & h)", "Ordered functional gradient"],
-              ["Tree Growth Policy", "Decision Stumps (depth 1)", "Level-wise (depth-first)", "Level-wise (depth-first)", "Leaf-wise (best-first)", "Symmetric / Oblivious"],
-              ["Continuous Splits", "Exact threshold search", "Exact / quantile search", "Exact & Quantile sketch", "Histogram binning (256 bins)", "Histogram binning"],
-              ["Categorical Handling", "Requires one-hot encoding", "Requires one-hot / Ordinal", "Experimental / partition", "Native integer histogram", "Ordered Target Statistics"],
-              ["Missing Value Policy", "Cannot handle NaN natively", "HistGradientBoosting handles", "Sparsity-aware default split", "Native default bin", "Native min/max allocation"],
-              ["Training Speed", "Moderate (CPU only)", "Slow on large tabular", "Very fast (multi-core / GPU)", "Ultra fast (least memory)", "Fast on GPU, moderate on CPU"],
-              ["Inference Speed", "Fast (stump sum)", "Moderate (tree traversal)", "Fast", "Fast", "Ultra-fast (SIMD bitwise)"],
+              ["First Author & Year", "Freund & Schapire (1995/1997)", "J. Friedman (1999/2001)", "Chen & Guestrin (2014/2016)", "Ke et al. (Microsoft, 2017)", "Prokhorenkova et al. (Yandex, 2018)"],
+              ["Loss Optimization", "Exponential loss only", "1st-order pseudo-residuals", "2nd-order Taylor (g & h)", "2nd-order Taylor (g & h)", "Ordered functional gradient"],
+              ["Tree Growth Policy", "Decision Stumps (depth 1)", "Level-wise (depth-first)", "Level-wise (default) or leaf-wise", "Leaf-wise (best-first)", "Symmetric / Oblivious (SIMD)"],
+              ["Continuous Splits", "Exact threshold search", "Exact pre-sort (HistGBM binned)", "Exact greedy & Quantile sketch / hist", "Histogram binning (256 integer bins)", "Histogram binning (dynamic borders)"],
+              ["Categorical Handling", "Requires one-hot encoding", "Requires one-hot / Ordinal", "Partition splits / one-hot", "Integer histogram categorical splits", "Ordered Target Statistics (online)"],
+              ["Missing Value Policy", "Requires manual imputation", "Imputation (native in HistGBM)", "Sparsity-aware default direction", "Dedicated NaN histogram bin", "Min / Max float allocation"],
+              ["Training Speed (CPU)", "Fast on small; CPU only", "Slow on large N (exact pre-sort)", "Fast with tree_method='hist'", "Fastest on large dense tabular (N > 10⁵)", "Moderate on CPU, fastest on GPU"],
+              ["Inference Latency", "Fast (stump summation)", "Standard sequential tree traversal", "Fast (low-latency C++ / Treelite)", "Fast (low-latency C++ / Treelite)", "Fastest CPU scoring (SIMD bitmask)"],
             ]}
           />
+          <WarningCallout title="Benchmarking Qualification: No Universal Winner">
+            Algorithm speed and accuracy rankings are strictly context-dependent. On datasets with millions of rows, LightGBM often trains fastest on CPU; on datasets with rich high-cardinality categorical features, CatBoost typically achieves higher out-of-the-box accuracy; on GPU clusters with custom loss objectives, XGBoost provides granular second-order control. Always evaluate on your specific dataset geometry.
+          </WarningCallout>
         </div>
       </Container>
 
