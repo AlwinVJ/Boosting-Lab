@@ -66,6 +66,7 @@ print("AdaBoost Test ROC-AUC:", roc_auc_score(y_test, y_proba))`,
 from sklearn.metrics import roc_auc_score
 
 model = GradientBoostingClassifier(
+    loss="log_loss",           # modern Scikit-Learn parameter (replacing deprecated 'deviance')
     n_estimators=300,
     learning_rate=0.05,
     max_depth=4,
@@ -77,7 +78,7 @@ model.fit(X_train, y_train)
 
 y_proba = model.predict_proba(X_test)[:, 1]
 print("GBM Test ROC-AUC:", roc_auc_score(y_test, y_proba))`,
-    out: ["Iter 50: deviance = 0.412", "Iter 150: deviance = 0.328", "Iter 300: deviance = 0.281", "Test ROC-AUC: 0.9085"],
+    out: ["Iter 50: log_loss = 0.412", "Iter 150: log_loss = 0.328", "Iter 300: log_loss = 0.281", "Test ROC-AUC: 0.9085"],
     metrics: [["Accuracy", "0.87"], ["ROC-AUC", "0.91"], ["Fit Time", "3.4 s"]],
     strengths: "Flexible loss optimization; robust out-of-the-box performance on medium tabular datasets.",
   },
@@ -355,6 +356,26 @@ function ImplementationPage() {
               </div>
               <div className="rounded border border-hairline bg-surface p-3">
                 <span className="font-semibold text-lime">Cover:</span> Number of samples affected by splits using this feature.
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded border border-hairline bg-surface p-5 space-y-3">
+            <h4 className="font-display text-sm font-semibold text-foreground">
+              Cardinality Bias in Impurity Importance vs. Game-Theoretic Attribution
+            </h4>
+            <div className="grid gap-4 sm:grid-cols-2 text-xs text-muted-foreground leading-relaxed">
+              <div className="rounded border border-hairline/60 bg-surface-2 p-3 space-y-1.5">
+                <div className="font-semibold text-orange">Why Split Weight / Gini Is Biased (Strobl et al. 2007)</div>
+                <p>
+                  Features with many unique values (continuous variables, ZIP codes, IDs) offer vastly more candidate split thresholds during tree construction. Consequently, greedy trees choose them far more frequently by chance alone, artificially inflating their split-weight and Gini importance even if they carry pure random noise.
+                </p>
+              </div>
+              <div className="rounded border border-hairline/60 bg-surface-2 p-3 space-y-1.5">
+                <div className="font-semibold text-cyan">Axiomatic Fairness in TreeSHAP (Lundberg et al. 2020)</div>
+                <p>
+                  TreeSHAP evaluates the marginal contribution of feature <InlineMath formula="j" /> across all possible feature subsets <InlineMath formula="S \subseteq F \setminus \{j\}" /> in <InlineMath formula="\mathcal{O}(TLD^2)" /> time. It is the only attribution method mathematically proven to satisfy <strong>Efficiency</strong>, <strong>Symmetry</strong>, <strong>Null player</strong>, and <strong>Monotonicity</strong>.
+                </p>
               </div>
             </div>
           </div>
