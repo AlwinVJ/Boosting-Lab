@@ -756,38 +756,122 @@ for feat_name, val in zip(X.columns, applicant_shap.values):
           id="production-governance"
           index="07"
           eyebrow="Governance & Risk"
-          title="Real-World Governance: SR 11-7, Drift & Fair Lending"
-          description="Deploying credit models in regulated banking requires adherence to Federal Reserve SR 11-7 / OCC Bulletin 2011-12 model risk management guidance."
+          title="Regulatory Compliance, Model Risk (SR 11-7) & Real-World Challenges"
+          description="Deploying credit risk models requires strict adherence to US fair lending statutes (ECOA, FCRA), Federal Reserve SR 11-7 guidance, disparate impact auditing, and continuous drift monitoring."
         />
         <div className="max-w-4xl space-y-6 md:ml-[136px]">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="rounded border border-hairline bg-surface p-5 text-xs space-y-2">
-              <div className="font-mono font-semibold text-orange">Concept & Data Drift (PSI)</div>
-              <p className="text-muted-foreground">
-                Macroeconomic shocks (interest rate changes, inflation) alter borrower delinquency dynamics. Credit risk models must track the <strong>Population Stability Index (PSI)</strong>:
-              </p>
-              <div className="rounded bg-surface-2 p-2 font-mono text-[11px] text-foreground">
-                PSI = Σ (Actual% - Expected%) × ln(Actual% / Expected%)
+          <div className="space-y-3 text-sm leading-relaxed text-muted-foreground">
+            <h4 className="font-display text-base font-semibold text-foreground">
+              US Financial Regulatory Architecture
+            </h4>
+            <p>
+              Credit scoring models are among the most heavily regulated applications of machine learning in the world. In the United States, lending models must comply with several interlocking federal statutes and supervisory directives:
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2 text-xs">
+              <div className="rounded border border-hairline bg-surface p-4 space-y-1.5">
+                <span className="font-mono font-semibold text-foreground">Equal Credit Opportunity Act (ECOA) &amp; Reg B</span>
+                <p className="text-muted-foreground">
+                  Prohibits discrimination on the basis of race, color, religion, national origin, sex, marital status, or age (12 CFR Part 1002). Mandates delivery of specific Adverse Action Notices detailing the principal reasons for credit denial within 30 days.
+                </p>
               </div>
-              <p className="text-muted-foreground">PSI &lt; 0.10: Stable; 0.10–0.25: Moderate drift (monitor); &gt; 0.25: Significant drift requiring model recalibration or retuning.</p>
+              <div className="rounded border border-hairline bg-surface p-4 space-y-1.5">
+                <span className="font-mono font-semibold text-cyan">Fair Credit Reporting Act (FCRA)</span>
+                <p className="text-muted-foreground">
+                  Enforces consumer transparency (15 U.S.C. § 1681m). When credit is denied or unfavorable terms are offered based on bureau data, lenders must disclose credit scores, key negative score factors, and credit reporting agencies used.
+                </p>
+              </div>
+              <div className="rounded border border-hairline bg-surface p-4 space-y-1.5">
+                <span className="font-mono font-semibold text-orange">CFPB Circulars 2022-03 &amp; 2023-03</span>
+                <p className="text-muted-foreground">
+                  The CFPB reaffirmed that creditors cannot use &quot;black-box&quot; machine learning algorithms to evade adverse action requirements. Post-hoc explanation tools (SHAP/LIME) that produce unstable or fabricated reasons violate federal law.
+                </p>
+              </div>
+              <div className="rounded border border-hairline bg-surface p-4 space-y-1.5">
+                <span className="font-mono font-semibold text-violet">Federal Reserve SR 11-7 / OCC 2011-12</span>
+                <p className="text-muted-foreground">
+                  Definitive Model Risk Management (MRM) guidance establishing three independent lines of defense: (1) Sound development and conceptual theory; (2) Independent model validation; and (3) Ongoing monitoring and audit governance.
+                </p>
+              </div>
             </div>
+            <p className="font-mono text-[11px] text-muted-foreground">
+              * Note: These regulatory examples reflect US law and supervisory standards. Other jurisdictions (such as the EU AI Act, Basel Committee standards, and UK PRA guidelines) enforce distinct legal requirements. This content is educational and does not constitute formal legal counsel.
+            </p>
+          </div>
 
-            <div className="rounded border border-hairline bg-surface p-5 text-xs space-y-2">
-              <div className="font-mono font-semibold text-cyan">Fair Lending & Disparate Impact</div>
+          <div className="rounded border border-hairline bg-surface p-5 text-xs space-y-3 text-muted-foreground">
+            <div className="font-mono font-semibold uppercase text-cyan">
+              Fair Lending: Disparate Treatment vs. Disparate Impact &amp; Proxy Variables
+            </div>
+            <p className="leading-relaxed">
+              Federal fair lending audits distinguish between two primary legal theories of discrimination:
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded bg-surface-2/60 p-3 space-y-1">
+                <span className="font-semibold text-foreground">Disparate Treatment (Direct):</span>
+                <p className="text-muted-foreground">Overt or intentional differential treatment based directly on a protected characteristic (e.g. including race, sex, or marital status in the model).</p>
+              </div>
+              <div className="rounded bg-surface-2/60 p-3 space-y-1">
+                <span className="font-semibold text-foreground">Disparate Impact (Indirect):</span>
+                <p className="text-muted-foreground">A facially neutral policy or model that disproportionately harms a protected demographic group without a demonstrable legitimate business necessity.</p>
+              </div>
+            </div>
+            <p className="leading-relaxed">
+              <strong>The Danger of Non-Linear Proxy Variables:</strong> Simply excluding protected demographic variables from the training dataset is completely insufficient. Gradient boosting trees excel at uncovering complex non-linear combinations of neutral features (e.g., zip code + retail merchant categories + education + cell phone carrier) that act as high-fidelity mathematical proxies for protected classes.
+            </p>
+            <div className="rounded border border-hairline/80 bg-background/60 p-3 space-y-1">
+              <span className="font-mono font-semibold text-orange">Limitation of the Four-Fifths Rule (Adverse Impact Ratio / AIR):</span>
               <p className="text-muted-foreground">
-                Excluding protected attributes (race, gender, national origin, age) does not guarantee compliance. Boosting models readily uncover non-linear proxy variables that may induce disparate impact.
-              </p>
-              <p className="text-muted-foreground">
-                Institutions must evaluate the <strong>Adverse Impact Ratio (AIR)</strong> under the Equal Credit Opportunity Act (ECOA): approval rates across protected groups must satisfy the Four-Fifths Rule (AIR &ge; 0.80) unless justified by legitimate business necessity with no less discriminatory alternative.
+                Under the Four-Fifths Rule, the selection rate for a protected class should not fall below 80% of the benchmark group: <InlineMath formula="\text{AIR} = \frac{\text{Approval Rate}_{\text{protected}}}{\text{Approval Rate}_{\text{benchmark}}} \ge 0.80" />.
+                <br /><strong className="text-foreground">Critical Legal Clarification:</strong> Passing this statistical 80% threshold is merely an evidentiary screening heuristic. It does <em>not</em> establish legal compliance, does <em>not</em> provide immunity from fair lending enforcement, and does <em>not</em> prove the absence of unlawful discrimination.
               </p>
             </div>
           </div>
 
-          <div className="rounded border border-hairline bg-surface p-5 text-xs space-y-2">
-            <div className="font-mono font-semibold text-violet">Federal Reserve SR 11-7 / OCC 2011-12 Governance Pillars</div>
-            <p className="text-muted-foreground">
-              Federal guidance on Model Risk Management requires three independent lines of defense: (1) Sound model development and conceptual justification; (2) Rigorous independent model validation prior to deployment; and (3) Ongoing outcome analysis, benchmarking, and governance committee oversight.
-            </p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="rounded border border-hairline bg-surface p-5 text-xs space-y-2">
+              <div className="font-mono font-semibold text-orange">Concept &amp; Data Drift: Population Stability Index (PSI)</div>
+              <p className="text-muted-foreground leading-relaxed">
+                Macroeconomic shocks (interest rate hikes, inflation, credit supply contractions) shift borrower repayment patterns. Lenders track score distribution stability across deciles:
+              </p>
+              <div className="rounded bg-surface-2 p-2 font-mono text-[11px] text-foreground">
+                PSI = Σ (Actual% - Expected%) × ln(Actual% / Expected%)
+              </div>
+              <ul className="list-disc pl-4 space-y-1 text-muted-foreground">
+                <li><strong className="text-lime">PSI &lt; 0.10:</strong> Stable; no action required.</li>
+                <li><strong className="text-orange">0.10 ≤ PSI ≤ 0.25:</strong> Moderate drift; heightened monitoring.</li>
+                <li><strong className="text-orange">PSI &gt; 0.25:</strong> Significant drift; mandatory model recalibration or retirement under SR 11-7.</li>
+              </ul>
+            </div>
+
+            <div className="rounded border border-hairline bg-surface p-5 text-xs space-y-2">
+              <div className="font-mono font-semibold text-violet">Real-World Challenges: The Reject Inference Problem</div>
+              <p className="text-muted-foreground leading-relaxed">
+                In credit underwriting, we face an inherent <strong className="text-foreground">survivorship bias</strong>: we only observe repayment or default labels for applicants the bank previously <em>approved</em> (<InlineMath formula="a = 0" />).
+              </p>
+              <p className="text-muted-foreground leading-relaxed">
+                The repayment behavior of rejected applicants (<InlineMath formula="a = 1" />) is fundamentally unobservable. Training solely on approved loans creates a truncated distribution that underestimates risk when expanding credit to borderline applicant segments.
+              </p>
+            </div>
+          </div>
+
+          <div className="rounded border border-hairline bg-surface p-5 text-xs space-y-3 text-muted-foreground">
+            <div className="font-mono font-semibold uppercase text-foreground">
+              Production Engineering Hurdles in Credit AI Deployment
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="rounded bg-surface-2/60 p-3 space-y-1">
+                <span className="font-semibold text-foreground">Thin-File Borrowers:</span>
+                <p className="text-muted-foreground">Young or unbanked applicants lack bureau trade lines. Requires robust handling of informative missingness.</p>
+              </div>
+              <div className="rounded bg-surface-2/60 p-3 space-y-1">
+                <span className="font-semibold text-foreground">Sub-50ms Point-of-Sale:</span>
+                <p className="text-muted-foreground">E-commerce Buy-Now-Pay-Later requires real-time feature joins and instant TreeSHAP adverse action generation.</p>
+              </div>
+              <div className="rounded bg-surface-2/60 p-3 space-y-1">
+                <span className="font-semibold text-foreground">Model Governance Auditing:</span>
+                <p className="text-muted-foreground">Full reproducibility, version-controlled features, and annual Independent Model Validation (IMV) reports.</p>
+              </div>
+            </div>
           </div>
 
           <WarningCallout title="Educational Scope Notice">
@@ -810,18 +894,30 @@ for feat_name, val in zip(X.columns, applicant_shap.values):
             questions={[
               {
                 id: "q1",
-                question: "Why is a default classification threshold of 0.50 financially suboptimal for a consumer credit lending portfolio?",
+                question: "In the regulatory Expected Credit Loss (ECL = PD × LGD × EAD) framework, what specific component does our supervised binary boosting classifier predict?",
                 options: [
-                  "Because computers cannot calculate decimal thresholds accurately",
-                  "Because the cost of approving a defaulting borrower (loss of principal) is much higher than the opportunity cost of rejecting a good borrower",
-                  "Because banks are legally required to accept all applicants with probability over 0.10",
-                  "Because XGBoost outputs probabilities that always sum to 2.0",
+                  "The Exposure at Default (EAD) in dollars",
+                  "The conditional Probability of Default (PD) over the evaluation performance horizon",
+                  "The legal workout recovery cost (LGD)",
+                  "The net interest margin earned over the life of the loan",
                 ],
                 correctIndex: 1,
-                explanation: "When False Negatives (loan write-offs) are an order of magnitude more costly than False Positives (lost interest profit), lowering the decision threshold to between 0.10 and 0.25 minimizes total portfolio loss.",
+                explanation: "Supervised binary classification models estimate the probability p = P(y=1|X) that a borrower defaults over a fixed horizon (PD). Separate financial regression models or historical recovery schedules estimate Loss Given Default (LGD) and Exposure at Default (EAD).",
               },
               {
                 id: "q2",
+                question: "Why does a lender operating along an empirical cost curve choose θ = 0.18 over the theoretical Bayes-optimal cutoff θ* ≈ 0.074?",
+                options: [
+                  "Because computers cannot calculate decimal thresholds accurately",
+                  "Setting θ = 0.074 rejects 32.4% of all applicants, hurting loan origination targets and market share, while θ = 0.18 captures 87.8% of defaults and approves 76% of applicants",
+                  "Because banks are legally required by ECOA to accept exactly 90% of all applicants",
+                  "Because XGBoost probabilities always sum to 2.0",
+                ],
+                correctIndex: 1,
+                explanation: "While θ* ≈ 0.074 mathematically minimizes pure expected loss under perfect probability calibration, retail banks must balance loss reduction against commercial origination volume. Operating at θ = 0.18 achieves 85% of theoretical financial savings while approving viable commercial volume.",
+              },
+              {
+                id: "q3",
                 question: "How do Shapley additive explanations (SHAP) assist lenders with adverse action requirements under FCRA and ECOA (Regulation B)?",
                 options: [
                   "They grant automatic legal immunity from fair lending audits and guarantee 0% model error",
@@ -833,7 +929,7 @@ for feat_name, val in zip(X.columns, applicant_shap.values):
                 explanation: "Under FCRA and ECOA (Regulation B), lenders must disclose the principal specific factors leading to adverse action. CFPB Circular 2022-03 requires that reasons derived from complex algorithms accurately reflect the factors considered. TreeSHAP quantifies exact local feature attributions, though creditors must still verify that reasons are truthful, stable, and compliant with fair lending laws.",
               },
               {
-                id: "q3",
+                id: "q4",
                 question: "What is the primary danger of using random K-Fold cross validation on credit or financial loan data?",
                 options: [
                   "It runs slower than StratifiedKFold",
