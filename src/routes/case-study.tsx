@@ -612,10 +612,51 @@ for name, model in models.items():
           id="interpretability-shap"
           index="06"
           eyebrow="Explainability"
-          title="SHAP Interpretability & Adverse Action Disclosures"
-          description="Under the Equal Credit Opportunity Act (ECOA / Regulation B) and the Fair Credit Reporting Act (FCRA), lenders must provide specific, truthful reasons when credit is denied."
+          title="TreeSHAP Interpretability, Attributions & Adverse Action Notices"
+          description="Axiomatic game-theoretic feature attribution via TreeSHAP in log-odds space, distinguishing statistical feature contributions from causal interventions and adverse action requirements."
         />
         <div className="max-w-4xl space-y-6 md:ml-[136px]">
+          <div className="space-y-3 text-sm leading-relaxed text-muted-foreground">
+            <h4 className="font-display text-base font-semibold text-foreground">
+              Axiomatic Foundations: Cooperative Game Theory to TreeSHAP
+            </h4>
+            <p>
+              Traditional tree feature importances (Split Gain, Weight, Cover) suffer from severe mathematical inconsistency: altering a model so that a feature has greater influence can paradoxically <em>decrease</em> its native split importance score.
+            </p>
+            <p>
+              To solve this, <strong>SHAP (SHapley Additive exPlanations)</strong> adapts Shapley values from cooperative game theory (Lloyd Shapley, 1953; Nobel Memorial Prize 2012). SHAP is the unique feature attribution method satisfying four foundational mathematical axioms:
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2 text-xs">
+              <div className="rounded border border-hairline bg-surface p-3 space-y-1">
+                <span className="font-mono font-semibold text-violet">1. Efficiency</span>
+                <p className="text-muted-foreground">Feature contributions sum exactly to the difference between model output and expected background prediction: <InlineMath formula="\sum_{j=1}^M \phi_j(x) = f(x) - \mathbb{E}[f(X)]" />.</p>
+              </div>
+              <div className="rounded border border-hairline bg-surface p-3 space-y-1">
+                <span className="font-mono font-semibold text-cyan">2. Symmetry</span>
+                <p className="text-muted-foreground">If feature <InlineMath formula="i" /> and feature <InlineMath formula="j" /> contribute identically to all possible feature subsets <InlineMath formula="S" />, then <InlineMath formula="\phi_i = \phi_j" />.</p>
+              </div>
+              <div className="rounded border border-hairline bg-surface p-3 space-y-1">
+                <span className="font-mono font-semibold text-lime">3. Dummy / Null Player</span>
+                <p className="text-muted-foreground">If feature <InlineMath formula="j" /> has zero marginal contribution to all subsets, its attribution is strictly zero: <InlineMath formula="\phi_j = 0" />.</p>
+              </div>
+              <div className="rounded border border-hairline bg-surface p-3 space-y-1">
+                <span className="font-mono font-semibold text-orange">4. Additivity</span>
+                <p className="text-muted-foreground">For an ensemble <InlineMath formula="f = \sum f_m" />, the Shapley value of the ensemble is the linear sum of Shapley values across individual trees: <InlineMath formula="\phi_j(f) = \sum \phi_j(f_m)" />.</p>
+              </div>
+            </div>
+          </div>
+
+          <MathBlock
+            label="TreeSHAP Margin-Space Additive Decomposition"
+            formula="F(x) = \phi_0 + \sum_{j=1}^M \phi_j(x) \quad \text{where} \quad \phi_0 = \mathbb{E}[F(X)]"
+            terms={[
+              ["F(x) = \\ln\\left(\\frac{p(x)}{1 - p(x)}\\right)", "Raw ensemble prediction in log-odds (margin) space before sigmoid activation."],
+              ["\\phi_0", "Expected base margin across the training reference background distribution."],
+              ["\\phi_j(x)", "Shapley attribution of feature j for applicant x, computed via TreeSHAP in O(TLD^2) polynomial time."],
+            ]}
+            note="Calibrated default probability is recovered via the standard logistic sigmoid: p(x) = 1 / (1 + exp(-F(x)))."
+          />
+
           <div className="grid gap-6 lg:grid-cols-[1.3fr_1fr]">
             <ChartContainer title="Global SHAP Feature Attribution (Credit Risk)">
               <FeatureImportanceChart />
@@ -623,34 +664,89 @@ for name, model in models.items():
 
             <div className="space-y-4 text-xs leading-relaxed text-muted-foreground">
               <h5 className="font-display text-sm font-semibold text-foreground">
-                Local Additive Attributions
+                Local Applicant Explanation Decomposition
               </h5>
               <p>
-                For an individual applicant, TreeSHAP decomposes the model output margin (log-odds <InlineMath formula="F(x) = \ln(p / (1-p))" />) into additive feature attributions:
+                For an individual declined applicant, TreeSHAP decomposes the shift from population average default log-odds to the applicant&apos;s specific risk score:
               </p>
-              <div className="rounded border border-hairline bg-surface p-3 font-mono text-[11px] text-foreground space-y-1">
-                <div>Expected value E[F(X)]: -1.75 (base prob: 14.8%)</div>
-                <div className="text-orange">+ Credit Score 598: +0.62 (log-odds)</div>
-                <div className="text-orange">+ DTI 0.47: +0.48 (log-odds)</div>
-                <div className="text-lime">- Income $95k: -0.21 (log-odds)</div>
-                <div className="font-semibold text-violet">= F(x) = -0.86 → p = 29.7% (&gt; 18% cutoff: DECLINE)</div>
+              <div className="rounded border border-hairline bg-surface p-3 font-mono text-[11px] text-foreground space-y-1.5">
+                <div className="text-muted-foreground">• Expected value E[F(X)]: -1.75 (base prob: 14.8%)</div>
+                <div className="text-orange">• + Credit Score 598: +0.62 (log-odds impact)</div>
+                <div className="text-orange">• + DTI 0.47: +0.48 (log-odds impact)</div>
+                <div className="text-orange">• + Late Payments (3): +0.35 (log-odds impact)</div>
+                <div className="text-lime">• - Income $95k: -0.21 (log-odds impact)</div>
+                <div className="border-t border-hairline pt-1 font-semibold text-violet">
+                  = Final F(x) = -0.51 → p = 37.5% (&gt; 18% cutoff: DECLINE)
+                </div>
               </div>
               <p className="text-[11px]">
-                The largest positive SHAP contributions (e.g. low credit score, elevated debt-to-income) indicate the primary model features that drove the predicted default probability above the threshold.
+                The factors pushing the score positive (<code className="text-orange">low credit score</code>, <code className="text-orange">high DTI</code>, and <code className="text-orange">recent delinquencies</code>) represent the primary mathematical drivers of loan denial.
               </p>
             </div>
           </div>
 
-          <WarningCallout title="Regulatory Compliance & Causality Disclosures">
-            <div className="space-y-2 text-xs">
+          <div className="rounded border border-hairline bg-surface p-5 text-xs space-y-3 text-muted-foreground">
+            <div className="font-mono font-semibold uppercase text-violet">
+              Methodological Comparison: Native Importance vs. Permutation vs. SHAP vs. Causality
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded bg-surface-2/60 p-3 space-y-1">
+                <span className="font-semibold text-foreground">Split Gain / Weight:</span>
+                <p className="text-muted-foreground">Biased toward continuous features with numerous split candidates. Inconsistent and purely model-structure dependent.</p>
+              </div>
+              <div className="rounded bg-surface-2/60 p-3 space-y-1">
+                <span className="font-semibold text-foreground">Permutation Importance:</span>
+                <p className="text-muted-foreground">Measures drop in validation score when columns are shuffled. Destroys collinear correlation structures, evaluating unrealistic data points.</p>
+              </div>
+              <div className="rounded bg-surface-2/60 p-3 space-y-1">
+                <span className="font-semibold text-foreground">TreeSHAP Values:</span>
+                <p className="text-muted-foreground">Axiomatically sound, additive, and consistent. Measures local marginal feature contribution relative to reference background distribution.</p>
+              </div>
+              <div className="rounded bg-surface-2/60 p-3 space-y-1">
+                <span className="font-semibold text-orange">Causal Inference (Pearl do-calculus):</span>
+                <p className="text-muted-foreground">SHAP is observational, NOT causal (<InlineMath formula="P(Y \mid \text{do}(X))" />). A high SHAP attribution proves predictive association, not that intervening on that feature in the real world will prevent default.</p>
+              </div>
+            </div>
+          </div>
+
+          <WarningCallout title="CFPB Circular 2022-03: Adverse Action Compliance Warning">
+            <div className="space-y-2 text-xs leading-relaxed">
               <p>
-                <strong>CFPB Consumer Financial Protection Circular 2022-03:</strong> The CFPB clarified that creditors cannot rely on post-hoc explanation tools (such as SHAP or LIME) if they produce inaccurate, unstable, or fabricated reasons for adverse action. Creditors must understand the specific, actual factors that led to denial under Regulation B (12 CFR § 1002.9) and FCRA (15 U.S.C. § 1681m).
+                <strong>The Consumer Financial Protection Bureau (CFPB) Circular 2022-03</strong> affirmed that creditors using complex algorithmic and machine learning models cannot evade adverse action notice requirements under the Equal Credit Opportunity Act (ECOA / Regulation B, 12 CFR § 1002.9) and the Fair Credit Reporting Act (FCRA, 15 U.S.C. § 1681m).
               </p>
               <p>
-                <strong>Associative vs Causal:</strong> SHAP measures statistical attribution within the model's internal decision logic (<InlineMath formula="\mathbb{E}[f(X) \mid X_j = x_j]" />). It does <em>not</em> prove causal interventions (<InlineMath formula="P(Y \mid \text{do}(X_j))" />). A model explanation never legalizes an algorithmic decision that causes unlawful disparate impact.
+                <strong>Critical Legal Precedent:</strong> Creditors cannot rely on post-hoc explanation tools (such as SHAP or LIME) if they produce approximate, unstable, or fabricated reasons that do not accurately reflect the actual factors considered by the model. Furthermore, the largest SHAP values do <em>not</em> automatically constitute legally defensible adverse action reasons: creditors must verify that explanations are truthful, stable, and do not reflect disguised unlawful discrimination against protected classes.
               </p>
             </div>
           </WarningCallout>
+
+          <div className="space-y-2">
+            <h5 className="font-display text-xs font-semibold uppercase text-muted-foreground">
+              Reproducible Python Implementation (TreeSHAP Explanation Extraction)
+            </h5>
+            <pre className="overflow-x-auto rounded bg-surface-2 p-4 font-mono text-xs text-foreground">
+              <code>{`import shap
+
+# 1. Instantiate TreeExplainer for the trained XGBoost model
+explainer = shap.TreeExplainer(xgb_model)
+
+# 2. Compute exact Shapley values in log-odds space
+shap_values = explainer(X_test)
+
+# 3. Inspect global feature attribution (mean absolute SHAP values)
+global_importance = np.abs(shap_values.values).mean(axis=0)
+
+# 4. Generate local waterfall attribution for an individual declined applicant
+applicant_idx = 42
+applicant_shap = shap_values[applicant_idx]
+
+# Expected base margin: E[F(X)]
+print(f"Base margin: {explainer.expected_value:.3f}")
+# Individual feature attributions: phi_j
+for feat_name, val in zip(X.columns, applicant_shap.values):
+    print(f"{feat_name:20s}: {val:+.3f} log-odds")`}</code>
+            </pre>
+          </div>
         </div>
       </Container>
 
