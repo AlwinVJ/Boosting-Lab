@@ -19,14 +19,15 @@ export const NAV_ITEMS = [
 
 export function Logo() {
   return (
-    <Link to="/" className="flex items-center gap-2.5">
-      <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden>
-        <rect x="1" y="16" width="5" height="9" fill="var(--muted-foreground)" opacity="0.5" />
-        <rect x="8" y="11" width="5" height="14" fill="var(--cyan)" opacity="0.8" />
-        <rect x="15" y="6" width="5" height="19" fill="var(--violet)" />
-        <path d="M2 13 L10 8 L18 3 L24 1" stroke="var(--orange)" strokeWidth="1.5" fill="none" />
-      </svg>
-      <span className="font-display text-[15px] font-bold tracking-[0.12em]">
+    <Link to="/" className="flex shrink-0 items-center gap-2.5">
+      <img
+        src="/boosting-lab-icon.jpg"
+        alt="Boosting Lab"
+        width={28}
+        height={28}
+        className="size-7 shrink-0 object-contain"
+      />
+      <span className="whitespace-nowrap font-display text-[15px] font-bold tracking-[0.12em]">
         BOOSTING<span className="text-violet">LAB</span>
       </span>
     </Link>
