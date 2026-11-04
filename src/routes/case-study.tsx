@@ -152,13 +152,13 @@ function CaseStudyPage() {
           id="dataset-eda"
           index="02"
           eyebrow="Exploratory Analysis"
-          title="Dataset Structure & Exploratory Analysis"
-          description="A representative portfolio of 5,000 consumer installment loans with demographic, behavioral, and credit bureau features."
+          title="Dataset Authenticity, Schema & Benchmark Comparison"
+          description="A rigorous audit of synthetic educational data vs real-world financial records, contrasted with the canonical UCI Credit Card Default benchmark."
         />
         <div className="max-w-4xl space-y-6 md:ml-[136px]">
           <DatasetPreview
             name="synthetic_loan_portfolio.csv"
-            meta="5,000 synthetic rows × 8 features · Default Rate = 14.8% · Illustrative Benchmark"
+            meta="5,000 synthetic observations × 8 features · Default Prevalence = 14.8% · Pedagogical Benchmark"
             rows={CREDIT_SAMPLE}
           />
 
@@ -166,18 +166,88 @@ function CaseStudyPage() {
             <div className="rounded border border-hairline bg-surface p-4 text-xs">
               <div className="font-mono text-muted-foreground">Credit Score (FICO)</div>
               <div className="mt-1 text-sm font-semibold text-foreground">Range: 580 – 810</div>
-              <p className="mt-1 text-muted-foreground">Strong negative correlation with default. Lower scores cluster heavily among defaulters.</p>
+              <p className="mt-1 text-muted-foreground">Standardized bureau creditworthiness metric. Strong negative correlation with default propensity; non-linear risk escalation below 620.</p>
             </div>
             <div className="rounded border border-hairline bg-surface p-4 text-xs">
               <div className="font-mono text-muted-foreground">Debt-to-Income (DTI)</div>
               <div className="mt-1 text-sm font-semibold text-foreground">Range: 0.12 – 0.58</div>
-              <p className="mt-1 text-muted-foreground">Higher ratios (&gt; 0.40) indicate debt distress; non-linear risk escalation above 0.45.</p>
+              <p className="mt-1 text-muted-foreground">Total existing monthly debt divided by gross monthly income. Ratios above 0.40 indicate debt distress.</p>
             </div>
             <div className="rounded border border-hairline bg-surface p-4 text-xs">
               <div className="font-mono text-muted-foreground">Delinquencies (24 mo)</div>
               <div className="mt-1 text-sm font-semibold text-foreground">Range: 0 – 6 events</div>
-              <p className="mt-1 text-muted-foreground">Count of 30+ day late payments. Highly non-linear trigger for boosting split finding.</p>
+              <p className="mt-1 text-muted-foreground">Count of 30+ day late payments in the preceding 24 months. Critical non-linear trigger for boosting split finding.</p>
             </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="rounded border border-hairline bg-surface p-4 text-xs">
+              <div className="font-mono text-muted-foreground">Annual Gross Income</div>
+              <div className="mt-1 text-sm font-semibold text-foreground">Range: $36,500 – $102,000</div>
+              <p className="mt-1 text-muted-foreground">Primary debt-service capacity indicator. Evaluated non-linearly in ratio with proposed loan installment.</p>
+            </div>
+            <div className="rounded border border-hairline bg-surface p-4 text-xs">
+              <div className="font-mono text-muted-foreground">Requested Loan Amount</div>
+              <div className="mt-1 text-sm font-semibold text-foreground">Range: $9,500 – $30,000</div>
+              <p className="mt-1 text-muted-foreground">Principal amount sought for consumer installment financing (average: $18,800).</p>
+            </div>
+            <div className="rounded border border-hairline bg-surface p-4 text-xs">
+              <div className="font-mono text-muted-foreground">Employment Length</div>
+              <div className="mt-1 text-sm font-semibold text-foreground">Range: 0 – 11 years</div>
+              <p className="mt-1 text-muted-foreground">Years in current employment. Proxies income stability and resilience against short-term job loss.</p>
+            </div>
+          </div>
+
+          <div className="rounded border border-hairline bg-surface p-5 space-y-3 text-xs leading-relaxed text-muted-foreground">
+            <div className="font-mono text-xs font-semibold uppercase text-violet">
+              Dataset Transparency: Synthetic Data vs. Real Financial Records
+            </div>
+            <p>
+              The dataset above is an <strong className="text-foreground">illustrative synthetic benchmark</strong> designed specifically for controlled pedagogical experimentation. While statistically calibrated to mirror retail installment credit distributions, synthetic data differs from real-world banking portfolios in critical ways:
+            </p>
+            <ul className="list-disc pl-5 space-y-1.5">
+              <li><strong>No Survivorship / Selection Bias:</strong> In synthetic data, outcomes are generated for all simulated applicants. In real banking, lenders only observe default outcomes for <em>previously approved</em> borrowers (the <em>Reject Inference</em> problem).</li>
+              <li><strong>Absence of Macroeconomic Shocks:</strong> Real loan portfolios experience systemic regime shifts (e.g. rapid Federal Reserve interest rate hikes, recessions, inflation shocks) that alter historical correlations.</li>
+              <li><strong>Controlled Covariance:</strong> Synthetic datasets isolate non-linear feature interactions cleanly, avoiding high-dimensional multi-collinearity and dirty transactional noise typical in real credit bureaus.</li>
+            </ul>
+          </div>
+
+          <div className="rounded border border-hairline bg-surface p-5 space-y-3 text-xs leading-relaxed text-muted-foreground">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <span className="font-mono text-xs font-semibold uppercase text-cyan">
+                Canonical Public Benchmark: UCI Credit Card Default Dataset
+              </span>
+              <a
+                href="https://archive.ics.uci.edu/dataset/350/default+of+credit+card+clients"
+                target="_blank"
+                rel="noreferrer"
+                className="font-mono text-[11px] text-cyan hover:underline"
+              >
+                UCI Repository [350] ↗
+              </a>
+            </div>
+            <p>
+              For production academic research, the gold-standard open-access benchmark is the <strong>Default of Credit Card Clients Dataset</strong> (Yeh &amp; Lien, 2009):
+            </p>
+            <div className="grid gap-2 sm:grid-cols-2 font-mono text-[11px] text-foreground/90">
+              <div className="rounded bg-surface-2/60 p-2.5">
+                • <strong>Source:</strong> Department of Information Management, Chung Hua University &amp; Tamkang University, Taiwan (Yeh &amp; Lien, 2009).
+              </div>
+              <div className="rounded bg-surface-2/60 p-2.5">
+                • <strong>Scale:</strong> 30,000 observations (April–September 2005) with 23 predictive attributes.
+              </div>
+              <div className="rounded bg-surface-2/60 p-2.5">
+                • <strong>Target Variable:</strong> <code>default.payment.next.month</code> (binary 0/1; default prevalence: 22.12%).
+              </div>
+              <div className="rounded bg-surface-2/60 p-2.5">
+                • <strong>License:</strong> Creative Commons Attribution 4.0 International (CC BY 4.0).
+              </div>
+            </div>
+            <p>
+              <strong>Advantages:</strong> Captures authentic monthly repayment histories (<code>PAY_0</code> to <code>PAY_6</code>) and monthly bill amounts (<code>BILL_AMT1</code> to <code>BILL_AMT6</code>) during a real consumer debt stress cycle.
+              <br />
+              <strong>Limitations:</strong> Pertains strictly to Taiwanese credit card revolving credit in 2005; does not reflect fixed installment loans, mortgages, or modern alternative credit data (e.g., cashflow banking or utility payments).
+            </p>
           </div>
         </div>
       </Container>
