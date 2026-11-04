@@ -3,13 +3,13 @@ import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { BoostingVisualizer } from "@/components/lab/BoostingVisualizer";
 import { AlgorithmExplorer, LearningModule } from "@/components/lab/learning";
 import { Container, SectionHeader } from "@/components/lab/primitives";
-import { MODULES } from "@/data/content";
+import { CURRICULUM_MODULES } from "@/data/curriculum";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "Boosting Lab — From Weak Learners to Powerful Predictions" },
-      { name: "description", content: "Interactive lab for learning boosting: AdaBoost, Gradient Boosting, XGBoost, LightGBM and CatBoost, from intuition to implementation." },
+      { name: "description", content: "Interactive educational platform for learning boosting: AdaBoost, Gradient Boosting, XGBoost, LightGBM, and CatBoost, from intuition to mathematical foundations and implementation." },
       { property: "og:title", content: "Boosting Lab — From Weak Learners to Powerful Predictions" },
       { property: "og:description", content: "Explore the mathematics, intuition, and implementation behind boosting algorithms." },
     ],
@@ -29,7 +29,7 @@ function Index() {
               From Weak Learners to <span className="text-violet">Powerful</span> Predictions.
             </h1>
             <p className="mt-6 max-w-lg text-lg leading-relaxed text-muted-foreground">
-              Explore the mathematics, intuition, and implementation behind boosting algorithms. Understand how sequential learning transforms simple models into powerful predictive systems.
+              Explore the mathematical foundations, working mechanisms, Python implementations, and optimization strategies behind boosting algorithms in machine learning.
             </p>
             <div className="mt-10 flex flex-wrap gap-3">
               <Link to="/fundamentals" className="group inline-flex items-center gap-2 bg-primary px-5 py-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90">
@@ -48,28 +48,31 @@ function Index() {
       </section>
 
       <Container className="py-24">
-        <SectionHeader index="01" eyebrow="Learning journey" title="Six modules, one continuous path." description="Each module builds on the previous one — from the core idea of sequential correction to deploying boosted models on real data." />
+        <SectionHeader index="01" eyebrow="Learning journey" title="Nine comprehensive modules, one continuous path." description="From foundational ensemble concepts and mathematical derivations to modern implementations, tuning, and real-world credit risk assessment." />
         <LearningModule />
       </Container>
 
       <Container className="pb-24">
-        <SectionHeader index="02" eyebrow="Algorithm family" title="Five algorithms, one principle." description="Every boosting method adds learners sequentially to reduce error. They differ in what they optimize and how they scale." />
+        <SectionHeader index="02" eyebrow="Algorithm family" title="Five algorithms, one foundational principle." description="Every boosting method adds learners sequentially to reduce residual error. They differ in what they optimize, how they handle sparsity, and how they scale." />
         <AlgorithmExplorer />
       </Container>
 
-      <Container className="pb-8">
-        <SectionHeader index="03" eyebrow="Roadmap" title="Explore the Learning Roadmap" description="Six modules covering boosting from first principles to real-world application. Everything is open — start anywhere, no sign-up required." />
+      <Container className="pb-16">
+        <SectionHeader index="03" eyebrow="Complete Curriculum" title="Explore the Learning Roadmap" description="Nine modules covering boosting from first principles to real-world application. Everything is accessible directly — start anywhere." />
         <div className="grid gap-px border border-hairline bg-hairline sm:grid-cols-2 lg:grid-cols-3">
-          {MODULES.map((m) => (
+          {CURRICULUM_MODULES.map((m) => (
             <Link key={m.id} to={m.to} className="group bg-background p-6 transition-colors hover:bg-surface">
               <div className="flex items-baseline justify-between">
-                <span className="font-mono text-xs text-violet">{m.id}</span>
-                <span className="font-mono text-[11px] text-muted-foreground">{m.time}</span>
+                <span className="font-mono text-xs text-violet">Module {m.number}</span>
+                <span className="font-mono text-[11px] text-muted-foreground">{m.time} · {m.difficulty}</span>
               </div>
               <div className="mt-3 flex items-start gap-1 font-display text-lg font-medium leading-snug transition-colors group-hover:text-violet">
                 {m.title}
                 <ArrowUpRight size={14} className="mt-1 shrink-0 opacity-0 transition-opacity group-hover:opacity-100" />
               </div>
+              <p className="mt-2 text-xs leading-relaxed text-muted-foreground line-clamp-2">
+                {m.tagline}
+              </p>
             </Link>
           ))}
         </div>

@@ -2,26 +2,37 @@ import { Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { ArrowUpRight } from "lucide-react";
 import { useState } from "react";
-import { ALGORITHMS, MODULES, type Algorithm } from "@/data/content";
+import { ALGORITHMS, type Algorithm } from "@/data/content";
+import { CURRICULUM_MODULES } from "@/data/curriculum";
 import { cn } from "@/lib/utils";
 
-/** Horizontal learning journey rail. */
+/** Horizontal learning journey rail displaying all 9 curriculum modules. */
 export function LearningModule() {
   return (
-    <div className="overflow-x-auto pb-2">
-      <div className="relative grid min-w-[1100px] grid-cols-6">
+    <div className="overflow-x-auto pb-4">
+      <div className="relative grid min-w-[1500px] grid-cols-9 gap-4">
         <div className="absolute left-0 right-0 top-[7px] h-px bg-hairline" />
-        {MODULES.map((m) => (
-          <Link key={m.id} to={m.to} className="group relative pr-6">
+        {CURRICULUM_MODULES.map((m) => (
+          <Link key={m.id} to={m.to} className="group relative pr-4">
             <span className="relative z-10 flex size-[15px] items-center justify-center border border-hairline bg-background transition-colors group-hover:border-violet">
               <span className="size-1.5 bg-muted-foreground transition-colors group-hover:bg-violet" />
             </span>
-            <div className="mt-6 font-mono text-xs text-muted-foreground">{m.id} · {m.time}</div>
-            <div className="mt-2 flex items-start gap-1 font-display text-lg font-medium leading-snug transition-colors group-hover:text-violet">
-              {m.title}<ArrowUpRight size={14} className="mt-1 shrink-0 opacity-0 transition-opacity group-hover:opacity-100" />
+            <div className="mt-6 font-mono text-[11px] text-muted-foreground">
+              {m.number} · {m.time}
+            </div>
+            <div className="mt-1 font-mono text-[10px] uppercase text-cyan">
+              {m.difficulty}
+            </div>
+            <div className="mt-1.5 flex items-start gap-1 font-display text-sm font-medium leading-snug transition-colors group-hover:text-violet">
+              {m.shortTitle}
+              <ArrowUpRight size={12} className="mt-0.5 shrink-0 opacity-0 transition-opacity group-hover:opacity-100" />
             </div>
             <ul className="mt-3 space-y-1">
-              {m.topics.map((t) => <li key={t} className="text-[13px] text-muted-foreground">— {t}</li>)}
+              {m.topics.slice(0, 3).map((t) => (
+                <li key={t} className="line-clamp-1 text-[11px] text-muted-foreground">
+                  — {t}
+                </li>
+              ))}
             </ul>
           </Link>
         ))}

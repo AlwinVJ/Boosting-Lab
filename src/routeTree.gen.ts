@@ -10,16 +10,25 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdaboostRouteImport } from './routes/adaboost'
 import { Route as AdvancedRouteImport } from './routes/advanced'
 import { Route as AlgorithmsRouteImport } from './routes/algorithms'
 import { Route as CaseStudyRouteImport } from './routes/case-study'
 import { Route as FundamentalsRouteImport } from './routes/fundamentals'
+import { Route as GradientBoostingRouteImport } from './routes/gradient-boosting'
+import { Route as HyperparametersRouteImport } from './routes/hyperparameters'
 import { Route as ImplementationRouteImport } from './routes/implementation'
 import { Route as ResourcesRouteImport } from './routes/resources'
+import { Route as XgboostRouteImport } from './routes/xgboost'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdaboostRoute = AdaboostRouteImport.update({
+  id: '/adaboost',
+  path: '/adaboost',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdvancedRoute = AdvancedRouteImport.update({
@@ -42,6 +51,16 @@ const FundamentalsRoute = FundamentalsRouteImport.update({
   path: '/fundamentals',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GradientBoostingRoute = GradientBoostingRouteImport.update({
+  id: '/gradient-boosting',
+  path: '/gradient-boosting',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HyperparametersRoute = HyperparametersRouteImport.update({
+  id: '/hyperparameters',
+  path: '/hyperparameters',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ImplementationRoute = ImplementationRouteImport.update({
   id: '/implementation',
   path: '/implementation',
@@ -52,73 +71,106 @@ const ResourcesRoute = ResourcesRouteImport.update({
   path: '/resources',
   getParentRoute: () => rootRouteImport,
 } as any)
+const XgboostRoute = XgboostRouteImport.update({
+  id: '/xgboost',
+  path: '/xgboost',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/adaboost': typeof AdaboostRoute
   '/advanced': typeof AdvancedRoute
   '/algorithms': typeof AlgorithmsRoute
   '/case-study': typeof CaseStudyRoute
   '/fundamentals': typeof FundamentalsRoute
+  '/gradient-boosting': typeof GradientBoostingRoute
+  '/hyperparameters': typeof HyperparametersRoute
   '/implementation': typeof ImplementationRoute
   '/resources': typeof ResourcesRoute
+  '/xgboost': typeof XgboostRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/adaboost': typeof AdaboostRoute
   '/advanced': typeof AdvancedRoute
   '/algorithms': typeof AlgorithmsRoute
   '/case-study': typeof CaseStudyRoute
   '/fundamentals': typeof FundamentalsRoute
+  '/gradient-boosting': typeof GradientBoostingRoute
+  '/hyperparameters': typeof HyperparametersRoute
   '/implementation': typeof ImplementationRoute
   '/resources': typeof ResourcesRoute
+  '/xgboost': typeof XgboostRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/adaboost': typeof AdaboostRoute
   '/advanced': typeof AdvancedRoute
   '/algorithms': typeof AlgorithmsRoute
   '/case-study': typeof CaseStudyRoute
   '/fundamentals': typeof FundamentalsRoute
+  '/gradient-boosting': typeof GradientBoostingRoute
+  '/hyperparameters': typeof HyperparametersRoute
   '/implementation': typeof ImplementationRoute
   '/resources': typeof ResourcesRoute
+  '/xgboost': typeof XgboostRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/adaboost'
     | '/advanced'
     | '/algorithms'
     | '/case-study'
     | '/fundamentals'
+    | '/gradient-boosting'
+    | '/hyperparameters'
     | '/implementation'
     | '/resources'
+    | '/xgboost'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/adaboost'
     | '/advanced'
     | '/algorithms'
     | '/case-study'
     | '/fundamentals'
+    | '/gradient-boosting'
+    | '/hyperparameters'
     | '/implementation'
     | '/resources'
+    | '/xgboost'
   id:
     | '__root__'
     | '/'
+    | '/adaboost'
     | '/advanced'
     | '/algorithms'
     | '/case-study'
     | '/fundamentals'
+    | '/gradient-boosting'
+    | '/hyperparameters'
     | '/implementation'
     | '/resources'
+    | '/xgboost'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdaboostRoute: typeof AdaboostRoute
   AdvancedRoute: typeof AdvancedRoute
   AlgorithmsRoute: typeof AlgorithmsRoute
   CaseStudyRoute: typeof CaseStudyRoute
   FundamentalsRoute: typeof FundamentalsRoute
+  GradientBoostingRoute: typeof GradientBoostingRoute
+  HyperparametersRoute: typeof HyperparametersRoute
   ImplementationRoute: typeof ImplementationRoute
   ResourcesRoute: typeof ResourcesRoute
+  XgboostRoute: typeof XgboostRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -128,6 +180,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/adaboost': {
+      id: '/adaboost'
+      path: '/adaboost'
+      fullPath: '/adaboost'
+      preLoaderRoute: typeof AdaboostRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/advanced': {
@@ -158,6 +217,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FundamentalsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/gradient-boosting': {
+      id: '/gradient-boosting'
+      path: '/gradient-boosting'
+      fullPath: '/gradient-boosting'
+      preLoaderRoute: typeof GradientBoostingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/hyperparameters': {
+      id: '/hyperparameters'
+      path: '/hyperparameters'
+      fullPath: '/hyperparameters'
+      preLoaderRoute: typeof HyperparametersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/implementation': {
       id: '/implementation'
       path: '/implementation'
@@ -172,17 +245,28 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ResourcesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/xgboost': {
+      id: '/xgboost'
+      path: '/xgboost'
+      fullPath: '/xgboost'
+      preLoaderRoute: typeof XgboostRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdaboostRoute: AdaboostRoute,
   AdvancedRoute: AdvancedRoute,
   AlgorithmsRoute: AlgorithmsRoute,
   CaseStudyRoute: CaseStudyRoute,
   FundamentalsRoute: FundamentalsRoute,
+  GradientBoostingRoute: GradientBoostingRoute,
+  HyperparametersRoute: HyperparametersRoute,
   ImplementationRoute: ImplementationRoute,
   ResourcesRoute: ResourcesRoute,
+  XgboostRoute: XgboostRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

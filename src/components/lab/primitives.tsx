@@ -2,6 +2,9 @@ import { Link } from "@tanstack/react-router";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { MathBlock, InlineMath } from "./MathBlock";
+
+export { MathBlock, InlineMath };
 
 export function SectionHeader({ index, eyebrow, title, description, id }: { index?: string; eyebrow?: string; title: string; description?: string; id?: string }) {
   return (
@@ -63,21 +66,16 @@ export function ConceptPanel({ index, title, summary, children, defaultOpen = fa
   );
 }
 
-/** Math notation placeholder — ready to be swapped for KaTeX rendering. */
-export function MathematicalExplanation({ label, formula, terms, note }: { label: string; formula: string; terms?: [string, string][]; note?: string }) {
+/** KaTeX-rendered mathematical explanation with symbol glossary. */
+export function MathematicalExplanation({ label, formula, terms, note, className }: { label?: string | undefined; formula: string; terms?: [string, string][] | undefined; note?: string | undefined; className?: string | undefined }) {
   return (
-    <figure className="border-l-2 border-violet bg-surface px-6 py-5">
-      <figcaption className="eyebrow mb-3">{label}</figcaption>
-      <div className="overflow-x-auto font-mono text-lg text-foreground md:text-xl">{formula}</div>
-      {terms && (
-        <dl className="mt-4 grid gap-x-6 gap-y-1.5 text-sm sm:grid-cols-2">
-          {terms.map(([k, v]) => (
-            <div key={k} className="flex gap-3"><dt className="min-w-12 font-mono text-cyan">{k}</dt><dd className="text-muted-foreground">{v}</dd></div>
-          ))}
-        </dl>
-      )}
-      {note && <p className="mt-4 font-mono text-[11px] text-muted-foreground">{note}</p>}
-    </figure>
+    <MathBlock
+      label={label}
+      formula={formula}
+      terms={terms}
+      note={note}
+      className={className}
+    />
   );
 }
 
