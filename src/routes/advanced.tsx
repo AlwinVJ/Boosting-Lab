@@ -54,12 +54,18 @@ function AdvancedPage() {
             <p>
               By shrinking the update to <InlineMath formula="\nu = 0.03" />, each tree only contributes a modest nudge towards the target. Future trees have room to learn orthogonal patterns that generalize across the distribution.
             </p>
+            <div className="rounded border border-hairline bg-surface p-4 text-xs space-y-2">
+              <div className="font-semibold text-foreground">Why Smaller Learning Rate Is Not Universally Better on Its Own:</div>
+              <p className="text-muted-foreground">
+                A common misconception is that simply lowering <InlineMath formula="\nu" /> (e.g., from 0.1 to 0.005) automatically improves performance. However, if <code className="text-violet">n_estimators</code> is held fixed at 100, a tiny learning rate leaves the model severely <strong>underfitted</strong>. Smaller learning rates only improve generalization when paired with a proportionally higher computational budget (<code className="text-cyan">n_estimators = 2,000–5,000</code>) governed by early stopping.
+              </p>
+            </div>
             <KeyTakeaway
               title="The Empirical Scaling Rule"
               points={[
-                "Halving the learning rate (e.g. 0.1 → 0.05) approximately doubles the number of estimators needed to reach equivalent training loss.",
-                "Lower learning rates consistently achieve lower minimum validation loss.",
-                "Rule of thumb: Set ν as small as your computational budget allows (typically 0.01 to 0.05), and determine n_estimators dynamically via early stopping.",
+                "Inverse Scaling: Halving the learning rate (e.g. 0.1 → 0.05) approximately doubles the number of estimators needed to reach equivalent training loss.",
+                "Lower Minimum: Lower learning rates consistently achieve lower minimum validation loss, but exhibit diminishing returns below ν = 0.01.",
+                "Production Protocol: Fix ν to a reasonable budget (0.02 to 0.05), set n_estimators large (e.g. 3,000), and let validation early stopping find the optimal stopping round.",
               ]}
             />
           </div>
@@ -79,7 +85,7 @@ function AdvancedPage() {
           id="early-stopping"
           index="02"
           eyebrow="Convergence Control"
-          title="Early Stopping Dynamics"
+          title="Early Stopping Dynamics & Framework Mechanics"
           description="Because boosting iteratively reduces training error to zero, training unchecked for thousands of rounds inevitably causes overfitting. Early stopping halts training at the exact point of peak validation performance."
         />
         <div className="grid gap-8 md:ml-[136px] lg:grid-cols-[1.2fr_1fr]">
@@ -89,8 +95,19 @@ function AdvancedPage() {
             </p>
             <div className="rounded border border-hairline bg-surface p-4 text-xs space-y-2">
               <div><strong className="text-foreground">Patience Parameter (stopping_rounds):</strong> Number of successive iterations with no validation metric improvement before execution halts.</div>
-              <div><strong className="text-foreground">Best Iteration Restoration:</strong> When early stopping triggers, the booster discards subsequent trees and resets <code className="text-violet">best_iteration</code> to the exact valley minimum.</div>
+              <div><strong className="text-foreground">Best Iteration Restoration:</strong> When early stopping triggers, modern frameworks restore model inference to the optimal checkpoint.</div>
             </div>
+
+            <div className="rounded border border-hairline/60 bg-surface-2 p-3 space-y-2 text-xs">
+              <div className="font-semibold text-foreground">Framework Model Restoration Behaviors:</div>
+              <ul className="space-y-1.5 text-muted-foreground">
+                <li>• <strong className="text-cyan">XGBoost:</strong> Sets <code className="text-foreground">best_iteration</code> and <code className="text-foreground">best_score</code>. Modern XGBoost (1.6+) automatically configures <code className="text-foreground">predict()</code> to score using trees <InlineMath formula="[0, \text{best\_iteration} + 1)" />.</li>
+                <li>• <strong className="text-lime">LightGBM:</strong> <code className="text-foreground">early_stopping</code> callback records <code className="text-foreground">best_iteration_</code>, and predictions automatically evaluate up to the best stage.</li>
+                <li>• <strong className="text-violet">CatBoost:</strong> Automatically retains the best tree configuration when <code className="text-foreground">use_best_model=True</code> (default).</li>
+                <li>• <strong className="text-orange">Scikit-Learn:</strong> <code className="text-foreground">n_iter_no_change</code> early stopping truncates additional estimators and preserves <code className="text-foreground">n_estimators_</code> at the best stage.</li>
+              </ul>
+            </div>
+
             <WarningCallout title="Patience Setting Guideline">
               With small learning rates (<InlineMath formula="\nu \le 0.02" />), validation loss can plateau for 15–20 rounds before dropping again. Set patience to at least 30–50 rounds to prevent premature stopping on temporary plateaus.
             </WarningCallout>
@@ -179,13 +196,20 @@ function AdvancedPage() {
             Setting <code className="text-violet">scale_pos_weight = 19.0</code> scales the gradient of positive instances by 19×. This forces the tree split finding algorithm to treat each positive instance with 19 times greater urgency than a negative instance.
           </p>
 
+          <WarningCallout title="Critical Cross-Validation Notice: Never SMOTE Outside Folds">
+            <p className="leading-relaxed">
+              If using synthetic oversampling methods such as SMOTE, resampling must occur <strong>strictly inside the training split of each cross-validation fold</strong> (e.g. using <code className="text-cyan">imblearn.pipeline.Pipeline</code>). Applying SMOTE to the entire dataset before CV splits synthesizes samples from test-fold neighbors, resulting in severe optimistic data leakage. In modern gradient boosting, algorithmic weighting (<code className="text-violet">scale_pos_weight</code> in XGBoost/LightGBM, <code className="text-violet">auto_class_weights</code> in CatBoost) is strongly preferred over SMOTE because it adjusts loss gradients directly without hallucinating artificial points in high-dimensional feature spaces.
+            </p>
+          </WarningCallout>
+
           <KeyTakeaway
             title="Imbalanced Boosting Protocol"
             points={[
               "Never evaluate on Accuracy: A dummy model predicting all negatives achieves 99% accuracy while having zero clinical/financial value.",
               "Track PR-AUC (Precision-Recall) and F1 Score at specific decision thresholds.",
-              "Use scale_pos_weight or class_weight rather than naive SMOTE: synthetic oversampling often produces unrealistic points in high-dimensional feature spaces.",
-              "Optimize the probability decision threshold post-training based on actual business cost matrices.",
+              "Prefer Algorithmic Weighting over SMOTE: scale_pos_weight adjusts gradients without synthesizing unrealistic observations.",
+              "Cross-Validation Isolation: If resampling is applied, it must reside strictly within each training fold, never touching validation data.",
+              "Cost-Sensitive Threshold Tuning: Optimize the probability decision threshold post-training based on actual business cost matrices.",
             ]}
           />
         </div>
