@@ -258,33 +258,131 @@ function CaseStudyPage() {
           id="feature-engineering"
           index="03"
           eyebrow="Signal Synthesis"
-          title="Feature Engineering & Leakage Prevention"
-          description="Crafting ratios that capture solvency risk and strict temporal validation splits."
+          title="Leak-Proof Preprocessing & Domain Feature Engineering"
+          description="Transforming raw credit bureau variables into predictive debt-burden signals while enforcing strict leak-proof pipeline isolation and Out-of-Time (OOT) validation."
         />
         <div className="max-w-4xl space-y-6 md:ml-[136px]">
           <div className="space-y-3 text-sm leading-relaxed text-muted-foreground">
+            <h4 className="font-display text-base font-semibold text-foreground">
+              Domain Ratio Engineering
+            </h4>
             <p>
-              In credit underwriting, raw values (such as an annual income of \$80,000 or a loan amount of \$20,000) are only informative when framed relative to one another. We engineer three domain ratios:
+              In credit underwriting, raw values (such as an annual income of \$80,000 or a loan amount of \$20,000) are only informative when framed relative to the applicant&apos;s recurring debt obligations and solvency cushion. We synthesize three canonical financial ratios:
             </p>
             <div className="grid gap-3 sm:grid-cols-3">
               <div className="rounded border border-hairline bg-surface p-3 text-xs">
                 <span className="font-mono font-semibold text-cyan">loan_to_income</span>
-                <p className="mt-1 text-muted-foreground">Loan Amount / Annual Income. Measures leverage burden.</p>
+                <p className="mt-1 text-muted-foreground"><code>loan_amount / annual_income</code>. Measures aggregate balance sheet leverage. Ratios &gt; 0.35 indicate elevated vulnerability to economic disruption.</p>
               </div>
               <div className="rounded border border-hairline bg-surface p-3 text-xs">
                 <span className="font-mono font-semibold text-violet">dti_adjusted</span>
-                <p className="mt-1 text-muted-foreground">Total existing monthly debt + proposed new installment divided by gross monthly income.</p>
+                <p className="mt-1 text-muted-foreground"><code>(existing_debt + new_installment) / gross_monthly_income</code>. Captures real post-origination debt-service burden.</p>
               </div>
               <div className="rounded border border-hairline bg-surface p-3 text-xs">
                 <span className="font-mono font-semibold text-lime">payment_risk_index</span>
-                <p className="mt-1 text-muted-foreground">Delinquencies × DTI / log(Income). Highlights borrowers with high leverage and troubled history.</p>
+                <p className="mt-1 text-muted-foreground"><code>delinquencies × dti / ln(income)</code>. Non-linear interaction highlighting applicants with prior payment distress and tight margins.</p>
               </div>
             </div>
           </div>
 
-          <WarningCallout title="No Target Leakage in Credit Risk">
-            Features representing borrower behavior <em>after</em> loan origination (e.g. number of late payments 6 months into the loan) must be strictly excluded. Only features known at the precise timestamp of the loan application are permissible.
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="rounded border border-hairline bg-surface p-5 text-xs space-y-2">
+              <div className="font-mono font-semibold text-cyan">Missing Values &amp; Outlier Invariance</div>
+              <p className="text-muted-foreground">
+                In credit risk, missing data is rarely Missing Completely at Random (MCAR); an unrecorded bureau field often signals thin-file credit history.
+              </p>
+              <p className="text-muted-foreground">
+                Tree boosting algorithms evaluate ordinal inequalities (<InlineMath formula="x_i \le \theta" />). As a result, <strong>tree models are invariant to monotonic transformations and extreme outliers</strong> in feature space. Furthermore, XGBoost and LightGBM learn native default split paths for <code className="text-foreground">NaN</code> values directly during training.
+              </p>
+            </div>
+
+            <div className="rounded border border-hairline bg-surface p-5 text-xs space-y-2">
+              <div className="font-mono font-semibold text-orange">Class Imbalance &amp; scale_pos_weight</div>
+              <p className="text-muted-foreground">
+                With a default prevalence of 14.8%, the negative-to-positive class ratio is approximately 5.76 to 1:
+              </p>
+              <div className="rounded bg-surface-2 p-2 font-mono text-[11px] text-foreground">
+                scale_pos_weight = (5000 - 740) / 740 ≈ 5.76
+              </div>
+              <p className="text-muted-foreground">
+                Setting <code className="text-foreground">scale_pos_weight=5.76</code> in XGBoost scales gradients for positive default instances. Naive oversampling (e.g. SMOTE) is avoided because it often distorts calibrated probability estimates.
+              </p>
+            </div>
+          </div>
+
+          <div className="rounded border border-hairline bg-surface p-5 text-xs space-y-3 text-muted-foreground">
+            <div className="font-mono font-semibold text-violet uppercase">
+              Strict Validation Architecture: Out-of-Time (OOT) vs. Random K-Fold
+            </div>
+            <p className="leading-relaxed">
+              Evaluating credit risk models with standard random K-Fold cross-validation introduces severe <strong className="text-foreground">temporal data leakage</strong>. Because macroeconomic conditions (interest rates, unemployment, inflation) fluctuate chronologically, randomly mixing 2024 loans into training folds allows future macroeconomic signals to leak into past predictions.
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2 font-mono text-[11px] text-foreground/90">
+              <div className="rounded bg-surface-2/60 p-3">
+                <span className="text-orange font-semibold">❌ Random K-Fold (Flawed in Credit):</span>
+                <p className="mt-1 text-muted-foreground">Randomly partitions applications across time. Artificially inflates test ROC-AUC by ~0.04; fails under production regime shifts.</p>
+              </div>
+              <div className="rounded bg-surface-2/60 p-3">
+                <span className="text-lime font-semibold">✓ Chronological Out-of-Time (OOT):</span>
+                <p className="mt-1 text-muted-foreground">Train: Months 1–36 (e.g. 2021–2023). Validation: Months 37–42. Test: Months 43–48 (2024). Replicates true deployment conditions.</p>
+              </div>
+            </div>
+          </div>
+
+          <WarningCallout title="Data Leakage Invariant: Fit Preprocessing Strictly on Training Folds">
+            Every data transformation—imputation medians, target encodings, outlier winsorization bounds, and scaling parameters—must be computed <strong>strictly on the training partition</strong> and applied without re-computation to validation and test partitions. Computing statistics across the whole dataset before splitting represents data snooping and invalidates model risk validation under Federal Reserve SR 11-7.
           </WarningCallout>
+
+          <div className="space-y-2">
+            <h5 className="font-display text-xs font-semibold uppercase text-muted-foreground">
+              Reproducible Python Pipeline (Leak-Proof Assembly)
+            </h5>
+            <pre className="overflow-x-auto rounded bg-surface-2 p-4 font-mono text-xs text-foreground">
+              <code>{`import numpy as np
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.impute import SimpleImputer
+import xgboost as xgb
+
+# 1. Load dataset (synthetic illustrative benchmark)
+df = pd.read_csv("synthetic_loan_portfolio.csv")
+
+# 2. Engineer domain solvency ratios
+df["loan_to_income"] = df["loan_amount"] / df["annual_income"]
+df["dti_adjusted"] = df["dti"] + (df["loan_amount"] * 0.03) / (df["annual_income"] / 12)
+df["payment_risk_index"] = df["late_payments"] * df["dti"] / np.log(df["annual_income"])
+
+X = df.drop(columns=["id", "default"])
+y = df["default"]
+
+# 3. Stratified Split (80% train, 20% out-of-sample test)
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.20, random_state=42, stratify=y
+)
+
+# 4. Asymmetric class weighting ratio
+scale_pos_weight = (len(y_train) - y_train.sum()) / y_train.sum()  # ~5.76
+
+# 5. Tree pipeline: XGBoost handles NaNs natively; no feature scaling required
+xgb_model = xgb.XGBClassifier(
+    n_estimators=300,
+    max_depth=4,
+    learning_rate=0.03,
+    subsample=0.8,
+    colsample_bytree=0.8,
+    scale_pos_weight=scale_pos_weight,
+    eval_metric="logloss",
+    random_state=42,
+    tree_method="hist"
+)
+
+# 6. Fit strictly on training set
+xgb_model.fit(X_train, y_train)`}</code>
+            </pre>
+          </div>
         </div>
       </Container>
 
