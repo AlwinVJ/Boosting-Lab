@@ -119,11 +119,30 @@ function GradientBoostingPage() {
             title="Step 0: Initialize with Optimal Constant Prediction"
             formula="F_0(x) = \arg\min_{\gamma} \sum_{i=1}^N L(y_i, \gamma)"
             terms={[
-              ["\\gamma", "Constant scalar value minimizing initial loss"],
+              ["\\gamma", "Constant scalar prediction minimizing initial empirical risk"],
+              ["F_0(x)", "Zero-split baseline prediction applied uniformly across all inputs"],
             ]}
-            note="For squared error L(y, F) = 1/2 (y - F)², F_0(x) is the mean of y. For absolute error L(y, F) = |y - F|, F_0(x) is the median of y. For binary log-loss, F_0(x) is the log-odds ln(p / (1 - p))."
+            note="Squared Error: F_0 = ȳ (sample mean). Absolute Error: F_0 = median(y). Binary Logistic Deviance: F_0 = ln(p̄ / (1 - p̄)) (sample log-odds). Multiclass Log Loss: F_{0,k} = ln(p̄_k) - (1/K)∑ ln(p̄_j) (centered prior logits)."
           >
-            The algorithm begins with a baseline constant prediction that requires zero tree splits.
+            <div className="space-y-2 text-xs leading-relaxed text-muted-foreground">
+              <p>
+                Gradient boosting begins with an optimal constant model before growing any tree partitions. Solving <InlineMath formula="\sum_{i=1}^N \frac{\partial L(y_i, \gamma)}{\partial \gamma} = 0" /> yields exact closed-form initializations:
+              </p>
+              <div className="grid gap-2 sm:grid-cols-2 pt-1 font-mono text-[11px]">
+                <div className="rounded bg-surface-2 p-2.5">
+                  <span className="text-cyan font-bold">MSE Regression:</span> F_0 = \frac&#123;1&#125;&#123;N&#125;\sum_&#123;i=1&#125;^N y_i = \bar&#123;y&#125;
+                </div>
+                <div className="rounded bg-surface-2 p-2.5">
+                  <span className="text-orange font-bold">MAE Regression:</span> F_0 = \text&#123;median&#125;(y)
+                </div>
+                <div className="rounded bg-surface-2 p-2.5">
+                  <span className="text-violet font-bold">Binary Deviance:</span> F_0 = \ln\left(\frac&#123;\bar&#123;y&#125;&#125;&#123;1 - \bar&#123;y&#125;&#125;\right)
+                </div>
+                <div className="rounded bg-surface-2 p-2.5">
+                  <span className="text-lime font-bold">Multiclass (K):</span> F_&#123;0,k&#125; = \ln(\bar&#123;y&#125;_k) - \frac&#123;1&#125;&#123;K&#125;\sum_&#123;j&#125;\ln(\bar&#123;y&#125;_j)
+                </div>
+              </div>
+            </div>
           </DerivationStep>
 
           <DerivationStep
@@ -266,6 +285,39 @@ function GradientBoostingPage() {
             <p className="text-xs text-muted-foreground">
               Notice that the factor of 2 in Friedman's negative gradient arises from the <InlineMath formula="-2yF" /> scaling in the exponent. When implemented with the standard logit link <InlineMath formula="F = \ln(p/(1-p))" /> on binary labels <InlineMath formula="y \in \{0, 1\}" />, the negative gradient is simply <InlineMath formula="y_i - p_i" />.
             </p>
+          </div>
+
+          <div className="rounded border border-lime/40 bg-lime/5 p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h4 className="font-display text-lg font-semibold text-foreground">
+                Multiclass Classification: Multinomial Deviance (Softmax)
+              </h4>
+              <Pill tone="lime">K-Tree Architecture</Pill>
+            </div>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              For a <InlineMath formula="K" />-class problem (<InlineMath formula="K > 2" />), target labels are encoded as one-hot indicator vectors <InlineMath formula="y_{ik} \in \{0, 1\}" /> for <InlineMath formula="k = 1, \dots, K" />. The ensemble maintains <InlineMath formula="K" /> parallel continuous functions <InlineMath formula="F_1(x), \dots, F_K(x)" />, producing predicted class probabilities via the Softmax transform:
+            </p>
+
+            <MathBlock
+              label="Multiclass Softmax Probability & Multinomial Cross-Entropy Loss"
+              formula="p_k(x) = \frac{\exp(F_k(x))}{\sum_{j=1}^K \exp(F_j(x))}, \quad L(y, F) = -\sum_{k=1}^K y_k \ln p_k(x)"
+              terms={[
+                ["y_{ik}", "Binary indicator: 1 if sample i belongs to class k, 0 otherwise"],
+                ["p_k(x)", "Predicted posterior probability for class k"],
+                ["F_k(x)", "Raw real-valued score (logit) for class k"],
+              ]}
+              note="Differentiating the multinomial loss with respect to F_k(x_i) yields the negative gradient: r_{ikm} = y_{ik} - p_k(x_i)."
+            />
+
+            <div className="rounded border border-hairline bg-surface p-4 space-y-2 text-xs">
+              <div className="font-semibold text-foreground">Crucial Architectural Consequence: K Trees per Stage</div>
+              <p className="text-muted-foreground leading-relaxed">
+                Unlike binary classification (which trains a single tree per boosting round), multiclass gradient boosting builds <strong><InlineMath formula="K" /> distinct regression trees at every boosting iteration <InlineMath formula="m" /></strong> (one tree per class). For 10 classes and 200 estimators, the model fits a total of <InlineMath formula="10 \times 200 = 2,000" /> trees.
+              </p>
+              <div className="rounded bg-surface-2 p-2.5 font-mono text-[11px] text-foreground">
+                \gamma_&#123;jkm&#125; \approx \frac&#123;K-1&#125;&#123;K&#125; \frac&#123;\sum_&#123;x_i \in R_&#123;jkm&#125;&#125; r_&#123;ikm&#125;&#125;&#123;\sum_&#123;x_i \in R_&#123;jkm&#125;&#125; |r_&#123;ikm&#125;|(1 - |r_&#123;ikm&#125;|)&#125;, \quad F_&#123;m,k&#125;(x) = F_&#123;m-1,k&#125;(x) + \nu \sum_&#123;j=1&#125;^&#123;J_&#123;km&#125;&#125; \gamma_&#123;jkm&#125; \mathbb&#123;I&#125;(x \in R_&#123;jkm&#125;)
+              </div>
+            </div>
           </div>
         </div>
       </Container>
@@ -410,6 +462,18 @@ print(f"Test R² Score: {r2:.3f}")`}
                 ],
                 correctIndex: 1,
                 explanation: "Differentiating the cross-entropy / deviance loss with respect to the raw logit F(x) yields the elegant gradient: -∂L/∂F = y_i - p_i, exactly the difference between the true binary label and predicted probability.",
+              },
+              {
+                id: "q4",
+                question: "If GradientBoostingClassifier is trained with n_estimators = 100 on a 5-class dataset (K = 5), how many total individual decision trees are fitted across the ensemble?",
+                options: [
+                  "500 trees (5 separate regression trees per boosting stage, one for each class)",
+                  "100 trees (one single multi-output tree per boosting stage)",
+                  "20 trees (100 divided evenly across 5 classes)",
+                  "1 tree with 500 leaves",
+                ],
+                correctIndex: 0,
+                explanation: "Under the multinomial deviance loss, each boosting iteration fits K independent regression trees—one for each target class—to approximate that class's pseudo-residuals. For 100 iterations and 5 classes, 100 × 5 = 500 trees are built.",
               },
             ]}
           />

@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Container, PageHero, SectionHeader, SectionIndex } from "@/components/lab/primitives";
+import { Container, PageHero, SectionHeader, SectionIndex, Pill } from "@/components/lab/primitives";
 import { MathBlock, InlineMath } from "@/components/lab/MathBlock";
-import { DerivationStep, WorkedExample, KeyTakeaway } from "@/components/lab/PedagogicalComponents";
+import { DerivationStep, WorkedExample, KeyTakeaway, WarningCallout } from "@/components/lab/PedagogicalComponents";
 import { QuizBlock } from "@/components/lab/QuizBlock";
 
 export const Route = createFileRoute("/adaboost")({
@@ -47,6 +47,22 @@ function AdaBoostPage() {
           <p className="text-base leading-relaxed text-muted-foreground">
             AdaBoost constructs an ensemble sequentially. Unlike bagging (such as Random Forest), where individual trees are trained independently on bootstrap samples, AdaBoost builds models in a pipeline where every new model pays closer attention to the instances that previous models failed to predict accurately.
           </p>
+
+          <div className="rounded border border-violet/40 bg-violet/5 p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="font-mono text-xs font-semibold uppercase tracking-wider text-violet">
+                Theoretical Breakthrough (Kearns & Valiant 1988, Schapire 1990)
+              </span>
+              <Pill tone="violet">PAC Theory</Pill>
+            </div>
+            <h4 className="font-display text-base font-semibold text-foreground">
+              Equivalence of Weak and Strong Learnability
+            </h4>
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              In Probably Approximately Correct (PAC) learning theory, a <em>strong learner</em> is an algorithm capable of achieving arbitrarily high accuracy (<InlineMath formula="1 - \epsilon" /> for any <InlineMath formula="\epsilon > 0" />) with high confidence (<InlineMath formula="1 - \delta" />). A <em>weak learner</em> is only required to perform slightly better than random chance (<InlineMath formula="\epsilon < 1/2 - \gamma" /> for some <InlineMath formula="\gamma > 0" />). Schapire (1990) proved the profound mathematical result that <strong>weak learnability is equivalent to strong learnability</strong>: any weak learning algorithm can be transformed into an arbitrarily strong learner via sequential boosting.
+            </p>
+          </div>
+
           <KeyTakeaway
             title="The Core Intuition of Adaptive Re-weighting"
             points={[
@@ -75,19 +91,19 @@ function AdaBoostPage() {
             title="Weighted Classification Error Rate (ε_m)"
             formula="\epsilon_m = \frac{\sum_{i=1}^N w_i^{(m)} \cdot \mathbb{I}(y_i \neq h_m(x_i))}{\sum_{i=1}^N w_i^{(m)}}"
             terms={[
-              ["w_i^{(m)}", "Weight of sample i at round m"],
+              ["w_i^{(m)}", "Weight of sample i at round m (normalized such that \\sum w_i^{(m)} = 1)"],
               ["y_i \\in \\{-1, +1\\}", "True binary class label"],
-              ["h_m(x_i)", "Prediction of the m-th weak classifier"],
+              ["h_m(x_i)", "Prediction of the m-th weak classifier in {-1, +1}"],
               ["\\mathbb{I}(\\cdot)", "Indicator function: 1 if misclassified, 0 otherwise"],
             ]}
-            note="If ε_m = 0.5 (random guessing), the learner provides zero information. If ε_m > 0.5, we can invert its predictions to achieve error < 0.5."
+            note="If ε_m = 0.5 (random guessing), the learner provides zero information. If ε_m > 0.5, inverting its predictions yields an error rate of 1 - ε_m < 0.5."
           >
             The error rate ε_m is the fraction of total sample weight attributed to misclassified instances.
           </DerivationStep>
 
           <DerivationStep
             step={2}
-            title="Estimator Importance Weight (α_m)"
+            title="Analytical Derivation of Estimator Importance Weight (α_m)"
             formula="\alpha_m = \frac{1}{2} \ln\left(\frac{1 - \epsilon_m}{\epsilon_m}\right)"
             terms={[
               ["\\alpha_m", "Voting power / contribution weight of model m in the ensemble"],
@@ -95,15 +111,57 @@ function AdaBoostPage() {
             ]}
             note="When ε_m approaches 0, α_m approaches +∞ (complete confidence). When ε_m = 0.5, α_m = 0 (no vote)."
           >
-            By minimizing the exponential loss objective <InlineMath formula="L(y, F(x)) = \exp(-y F(x))" />, we obtain this exact analytical solution for <InlineMath formula="\alpha_m" />.
+            <div className="space-y-3 text-xs leading-relaxed text-muted-foreground">
+              <p>
+                At round <InlineMath formula="m" />, AdaBoost minimizes the exponential loss of the updated ensemble <InlineMath formula="F_m(x) = F_{m-1}(x) + \alpha h_m(x)" />:
+              </p>
+              <div className="rounded bg-surface-2 p-3 font-mono text-[11px] text-foreground">
+                \mathcal&#123;L&#125;(\alpha) = \sum_&#123;i=1&#125;^N w_i^&#123;(m)&#125; \exp\left(-\alpha y_i h_m(x_i)\right)
+              </div>
+              <p>
+                Partitioning training samples into those correctly classified (<InlineMath formula="y_i h_m(x_i) = +1" />) and misclassified (<InlineMath formula="y_i h_m(x_i) = -1" />):
+              </p>
+              <div className="rounded bg-surface-2 p-3 font-mono text-[11px] text-foreground">
+                \mathcal&#123;L&#125;(\alpha) = e^&#123;-\alpha&#125; \sum_&#123;y_i = h_m(x_i)&#125; w_i^&#123;(m)&#125; + e^&#123;\alpha&#125; \sum_&#123;y_i \neq h_m(x_i)&#125; w_i^&#123;(m)&#125; = (1 - \epsilon_m) e^&#123;-\alpha&#125; + \epsilon_m e^&#123;\alpha&#125;
+              </div>
+              <p>
+                Taking the derivative with respect to <InlineMath formula="\alpha" /> and setting it to zero:
+              </p>
+              <div className="rounded bg-surface-2 p-3 font-mono text-[11px] text-foreground">
+                \frac&#123;\partial \mathcal&#123;L&#125;&#125;&#123;\partial \alpha&#125; = -(1 - \epsilon_m)e^&#123;-\alpha&#125; + \epsilon_m e^&#123;\alpha&#125; = 0 \implies e^&#123;2\alpha&#125; = \frac&#123;1 - \epsilon_m&#125;&#123;\epsilon_m&#125; \implies \alpha_m = \frac&#123;1&#125;&#123;2&#125; \ln\left(\frac&#123;1 - \epsilon_m&#125;&#123;\epsilon_m&#125;\right)
+              </div>
+            </div>
           </DerivationStep>
 
           <DerivationStep
             step={3}
-            title="Sample Weight Update Rule & Normalization"
+            title="Normalization Constant (Z_m) & Exponential Loss Bound"
+            formula="Z_m = \sum_{i=1}^N w_i^{(m)} \exp\left(-\alpha_m y_i h_m(x_i)\right) = 2\sqrt{\epsilon_m(1 - \epsilon_m)}"
+            terms={[
+              ["Z_m", "Normalization constant ensuring updated weights sum to 1.0"],
+              ["\\epsilon_m = \\frac{1}{2} - \\gamma_m", "Classifier edge \\gamma_m > 0 over random guessing"],
+            ]}
+            note="Because Z_m = √(1 - 4γ_m²) ≤ exp(-2γ_m²), the training error drops exponentially: (1/N) ∑ I(H(x_i) ≠ y_i) ≤ ∏ Z_m ≤ exp(-2 ∑ γ_m²)."
+          >
+            <div className="space-y-2 text-xs leading-relaxed text-muted-foreground">
+              <p>
+                Plugging the optimal <InlineMath formula="\alpha_m" /> back into <InlineMath formula="\mathcal{L}(\alpha)" /> yields the minimal loss at step <InlineMath formula="m" />:
+              </p>
+              <div className="rounded bg-surface-2 p-3 font-mono text-[11px] text-foreground">
+                Z_m = (1 - \epsilon_m)\sqrt&#123;\frac&#123;\epsilon_m&#125;&#123;1 - \epsilon_m&#125;&#125; + \epsilon_m\sqrt&#123;\frac&#123;1 - \epsilon_m&#125;&#123;\epsilon_m&#125;&#125; = 2\sqrt&#123;\epsilon_m(1 - \epsilon_m)&#125;
+              </div>
+              <p>
+                As long as each weak learner performs slightly better than random chance (<InlineMath formula="\epsilon_m < 0.5 \implies \gamma_m > 0" />), we have <InlineMath formula="Z_m < 1" />, guaranteeing that training error converges to zero at an exponential rate.
+              </p>
+            </div>
+          </DerivationStep>
+
+          <DerivationStep
+            step={4}
+            title="Sample Weight Update Rule"
             formula="w_i^{(m+1)} = \frac{w_i^{(m)} \cdot \exp\left(-\alpha_m y_i h_m(x_i)\right)}{Z_m}"
             terms={[
-              ["Z_m", "Normalization constant: \\sum_{i=1}^N w_i^{(m)} \\exp(-\\alpha_m y_i h_m(x_i))"],
+              ["w_i^{(m+1)}", "New normalized sample weight for observation i in round m+1"],
               ["y_i h_m(x_i)", "+1 if correct classification; -1 if misclassified"],
             ]}
             note="For correct predictions: weight is multiplied by exp(-α_m) < 1. For incorrect predictions: weight is multiplied by exp(+α_m) > 1."
@@ -112,16 +170,50 @@ function AdaBoostPage() {
           </DerivationStep>
 
           <DerivationStep
-            step={4}
-            title="Final Ensemble Prediction"
+            step={5}
+            title="Final Ensemble Prediction & Margin Theory"
             formula="H(x) = \text{sign}\left(\sum_{m=1}^M \alpha_m h_m(x)\right)"
             terms={[
               ["H(x)", "Final aggregated ensemble prediction in {-1, +1}"],
               ["M", "Total number of boosting iterations (estimators)"],
             ]}
           >
-            The final prediction is a weighted majority vote among all M weak classifiers.
+            <div className="space-y-3 text-xs leading-relaxed text-muted-foreground">
+              <p>
+                The final prediction is a weighted majority vote among all <InlineMath formula="M" /> weak classifiers.
+              </p>
+              <div className="rounded border border-hairline bg-surface p-3 space-y-1.5">
+                <div className="font-semibold text-cyan">Why AdaBoost Resists Overfitting: Margin Theory</div>
+                <p>
+                  Schapire, Freund, Bartlett, and Lee (1998) demonstrated that AdaBoost continues to improve generalization performance even after training classification error reaches 0%. This occurs because AdaBoost continues to increase the <strong>classification margins</strong> of the training examples: <InlineMath formula="\text{margin}(x, y) = y \frac{\sum_{m} \alpha_m h_m(x)}{\sum_m \alpha_m} \in [-1, 1]" />. Larger margins correlate directly with lower upper bounds on generalization error.
+                </p>
+              </div>
+            </div>
           </DerivationStep>
+
+          <div className="rounded border border-cyan/40 bg-cyan/5 p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h4 className="font-display text-lg font-semibold text-foreground">
+                Multiclass AdaBoost: The SAMME Algorithm (Zhu et al. 2009)
+              </h4>
+              <Pill tone="cyan">K-Class Generalization</Pill>
+            </div>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              Standard binary AdaBoost requires <InlineMath formula="\epsilon_m < 0.5" />. In a <InlineMath formula="K" />-class problem (<InlineMath formula="K > 2" />), random guessing yields an error of <InlineMath formula="1 - 1/K" /> (e.g. 90% error for 10 classes). Requiring error &lt; 50% would be excessively restrictive. Zhu, Zou, Rosset, and Hastie (2009) introduced <strong>SAMME</strong> (Stagewise Additive Modeling using a Multi-class Exponential loss function):
+            </p>
+            <MathBlock
+              label="SAMME Learner Weight Formula"
+              formula="\alpha_m = \ln\left(\frac{1 - \epsilon_m}{\epsilon_m}\right) + \ln(K - 1)"
+              terms={[
+                ["K", "Number of distinct classes (K ≥ 2)"],
+                ["\\epsilon_m", "Weighted multiclass classification error rate"],
+              ]}
+              note="Notice: when K = 2, ln(K - 1) = ln(1) = 0, reducing exactly to binary AdaBoost up to a scale factor of 1/2. For any K, α_m > 0 as long as accuracy > 1/K (better than random guessing)."
+            />
+            <WarningCallout title="Scikit-Learn API Modernization Notice">
+              Scikit-Learn originally offered two multiclass AdaBoost algorithms: <code className="text-violet">SAMME</code> (discrete predictions) and <code className="text-violet">SAMME.R</code> (real-valued class probability estimates). <code className="text-violet">SAMME.R</code> was <strong>deprecated in Scikit-Learn 1.4</strong> and <strong>removed in Scikit-Learn 1.6</strong>. Always configure <code className="text-cyan">algorithm="SAMME"</code> explicitly in modern Python code.
+            </WarningCallout>
+          </div>
         </div>
       </Container>
 
@@ -259,6 +351,18 @@ print(classification_report(y_test, y_pred))`}
                 ],
                 correctIndex: 0,
                 explanation: "Random Forest is a bagging technique focused on variance reduction through parallel decorrelated deep trees, whereas AdaBoost is a boosting technique focused on bias reduction through sequential adaptive correction.",
+              },
+              {
+                id: "q4",
+                question: "In the multiclass SAMME algorithm with K classes, what accuracy must a weak classifier achieve to receive a positive voting weight (α_m > 0)?",
+                options: [
+                  "Accuracy strictly greater than 1/K (better than random chance in K classes)",
+                  "Accuracy strictly greater than 50%",
+                  "Accuracy strictly greater than (K - 1) / K",
+                  "Accuracy strictly greater than 90%",
+                ],
+                correctIndex: 0,
+                explanation: "Because α_m = ln((1 - ε_m) / ε_m) + ln(K - 1), α_m is positive whenever 1 - ε_m > 1/K. This correctly generalizes the binary condition (accuracy > 1/2) to arbitrary K-class problems.",
               },
             ]}
           />

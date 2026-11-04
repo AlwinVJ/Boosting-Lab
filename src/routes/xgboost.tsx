@@ -228,7 +228,7 @@ function XGBoostPage() {
             <div className="rounded border border-hairline bg-surface p-4">
               <div className="font-mono text-sm font-semibold text-orange">reg_alpha (α / L1)</div>
               <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                L1 regularization on leaf weights. Drives leaf weights to exactly zero, producing sparse models and automatic feature pruning.
+                L1 regularization on leaf weights. Drives leaf weights to exactly zero via soft-thresholding, producing sparse leaf updates.
               </p>
             </div>
             <div className="rounded border border-hairline bg-surface p-4">
@@ -236,6 +236,26 @@ function XGBoostPage() {
               <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
                 Minimum sum of Hessians <InlineMath formula="\sum h_i" /> required in a child. For regression, this is the number of samples; for classification, it corresponds to effective sample count.
               </p>
+            </div>
+          </div>
+
+          <div className="rounded border border-hairline bg-surface p-5 space-y-3">
+            <h4 className="font-display text-sm font-semibold text-foreground">
+              Critical Theoretical Distinction: Leaf-Weight Penalties vs. Feature Subsampling
+            </h4>
+            <div className="grid gap-4 sm:grid-cols-2 text-xs text-muted-foreground leading-relaxed">
+              <div className="rounded border border-hairline/60 bg-surface-2 p-3 space-y-1.5">
+                <div className="font-semibold text-cyan">Leaf-Weight Regularization (λ, α, η)</div>
+                <p>
+                  Acts strictly on the <strong>output space</strong> (the continuous prediction weights <InlineMath formula="w_j^*" /> assigned to leaf nodes). Setting <code className="text-orange">reg_alpha &gt; 0</code> shrinks or zeroes out leaf predictions, but does <em>not</em> remove columns from the input feature dataset.
+                </p>
+              </div>
+              <div className="rounded border border-hairline/60 bg-surface-2 p-3 space-y-1.5">
+                <div className="font-semibold text-violet">Input-Feature Selection (colsample_bytree, max_depth)</div>
+                <p>
+                  Acts on the <strong>input space and tree topology</strong>. Subsampling columns per tree (<code className="text-cyan">colsample_bytree = 0.8</code>) randomly hides input features during split finding, decorrelating trees and preventing collinear dominant variables from monopolizing every node.
+                </p>
+              </div>
             </div>
           </div>
         </div>
