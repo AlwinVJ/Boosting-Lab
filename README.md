@@ -17,7 +17,7 @@ Rather than treating algorithms as black boxes (`import model; model.fit()`), Bo
 ## Data Transparency & Educational Scope Notice
 
 Boosting Lab is an interactive educational research and pedagogical platform:
-* **Demonstration Datasets:** The credit risk dataset featured in `/implementation` and `/case-study` is a 5,000-sample synthetic pedagogical dataset generated to illustrate consumer loan underwriting workflows, asymmetric error costs, and adverse action explanations. It does not represent live bank proprietary portfolio records.
+* **Demonstration Datasets:** The credit risk dataset featured in `/implementation` and `/case-study` is a 5,000-sample synthetic pedagogical dataset deterministically generated via `src/data/credit-dataset-generator.ts` (Mulberry32 PRNG seed 42) to illustrate consumer loan underwriting workflows, asymmetric error costs, and adverse action explanations. It does not represent live bank customer records.
 * **Model Predictions & Outputs:** Terminal outputs, benchmark comparison metrics, and confusion matrix illustrations are educational demonstrations intended to highlight comparative performance tradeoffs across algorithms, not production financial underwriting guarantees.
 * **Regulatory Frameworks:** Legal and regulatory references (ECOA / Regulation B, FCRA, SR 11-7) reflect US statutory requirements and supervisory standards as of mid-2025. CFPB Circulars 2022-03 and 2023-03 were withdrawn on May 12, 2025; statutory mandates under ECOA (15 U.S.C. § 1691) and Regulation B (12 CFR § 1002.9) remain in effect. This platform is strictly educational and does not constitute formal legal, credit underwriting, or financial advice.
 
@@ -90,7 +90,7 @@ The curriculum is organized into **nine comprehensive educational modules**:
 * Leak-proof feature engineering: leverage ratios, adjusted DTI, and payment risk indices.
 * Model benchmarking: Logistic Regression baseline vs. Random Forest vs. GBM vs. tuned XGBoost.
 * Expected loss minimization via cost-optimal decision thresholding ($\theta^* \approx 0.074$) vs commercial volume threshold ($\theta = 0.18$).
-* Individual loan decision explainability using TreeSHAP to satisfy adverse action notice requirements (FCRA / ECOA / Regulation B).
+* Individual loan decision explainability using TreeSHAP as a local feature attribution technique, distinguishing mathematical Shapley attributions from legal and regulatory adverse action compliance (FCRA / ECOA / Regulation B).
 * Production challenges: concept drift (PSI monitoring), algorithmic fairness (Four-Fifths Rule), and regulatory governance (SR 11-7).
 
 ### Resources & Bibliography (`/resources`)
