@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { ArrowUpRight, Check } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import { useState } from "react";
 import { ALGORITHMS, MODULES, type Algorithm } from "@/data/content";
 import { cn } from "@/lib/utils";
@@ -11,14 +11,10 @@ export function LearningModule() {
     <div className="overflow-x-auto pb-2">
       <div className="relative grid min-w-[1100px] grid-cols-6">
         <div className="absolute left-0 right-0 top-[7px] h-px bg-hairline" />
-        <motion.div initial={{ scaleX: 0 }} whileInView={{ scaleX: 1 }} viewport={{ once: true }} transition={{ duration: 1.2, ease: "easeOut" }}
-          className="absolute left-0 top-[7px] h-px w-[41%] origin-left bg-violet" />
         {MODULES.map((m) => (
           <Link key={m.id} to={m.to} className="group relative pr-6">
-            <span className={cn("relative z-10 flex size-[15px] items-center justify-center border bg-background",
-              m.status === "done" ? "border-violet bg-violet" : m.status === "active" ? "border-violet" : "border-hairline")}>
-              {m.status === "done" && <Check size={10} className="text-primary-foreground" />}
-              {m.status === "active" && <span className="size-1.5 animate-pulse bg-violet" />}
+            <span className="relative z-10 flex size-[15px] items-center justify-center border border-hairline bg-background transition-colors group-hover:border-violet">
+              <span className="size-1.5 bg-muted-foreground transition-colors group-hover:bg-violet" />
             </span>
             <div className="mt-6 font-mono text-xs text-muted-foreground">{m.id} · {m.time}</div>
             <div className="mt-2 flex items-start gap-1 font-display text-lg font-medium leading-snug transition-colors group-hover:text-violet">

@@ -1,7 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { Menu, X } from "lucide-react";
 import { useState } from "react";
-import { LearningProgressIndicator } from "./LearningProgressIndicator";
 
 export const NAV_ITEMS = [
   { to: "/", label: "Home" },
@@ -48,7 +47,6 @@ export function NavigationBar() {
           ))}
         </nav>
         <div className="flex items-center gap-3">
-          <LearningProgressIndicator />
           <button
             className="p-1.5 text-muted-foreground hover:text-foreground lg:hidden"
             onClick={() => setOpen((o) => !o)}

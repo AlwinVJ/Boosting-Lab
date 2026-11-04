@@ -1,9 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { BoostingVisualizer } from "@/components/lab/BoostingVisualizer";
 import { AlgorithmExplorer, LearningModule } from "@/components/lab/learning";
-import { Container, MetricCard, SectionHeader } from "@/components/lab/primitives";
-import { PROGRESS } from "@/data/content";
+import { Container, SectionHeader } from "@/components/lab/primitives";
+import { MODULES } from "@/data/content";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -58,12 +58,20 @@ function Index() {
       </Container>
 
       <Container className="pb-8">
-        <SectionHeader index="03" eyebrow="Your progress" title="Learning progress" description="Placeholder values — tracking will be connected in a later phase." />
-        <div className="grid grid-cols-2 border border-hairline lg:grid-cols-4 [&>*]:border-hairline [&>*:not(:last-child)]:border-r">
-          <MetricCard label="Total modules" value={String(PROGRESS.total)} tone="violet" />
-          <MetricCard label="Completed" value={`${PROGRESS.completed}/${PROGRESS.total}`} tone="lime" hint="33% complete" />
-          <MetricCard label="Est. learning time" value={`${PROGRESS.hours} h`} tone="cyan" hint="≈ 3 h per module" />
-          <MetricCard label="Current stage" value="03" tone="orange" hint="XGBoost & modern algorithms" />
+        <SectionHeader index="03" eyebrow="Roadmap" title="Explore the Learning Roadmap" description="Six modules covering boosting from first principles to real-world application. Everything is open — start anywhere, no sign-up required." />
+        <div className="grid gap-px border border-hairline bg-hairline sm:grid-cols-2 lg:grid-cols-3">
+          {MODULES.map((m) => (
+            <Link key={m.id} to={m.to} className="group bg-background p-6 transition-colors hover:bg-surface">
+              <div className="flex items-baseline justify-between">
+                <span className="font-mono text-xs text-violet">{m.id}</span>
+                <span className="font-mono text-[11px] text-muted-foreground">{m.time}</span>
+              </div>
+              <div className="mt-3 flex items-start gap-1 font-display text-lg font-medium leading-snug transition-colors group-hover:text-violet">
+                {m.title}
+                <ArrowUpRight size={14} className="mt-1 shrink-0 opacity-0 transition-opacity group-hover:opacity-100" />
+              </div>
+            </Link>
+          ))}
         </div>
       </Container>
     </>

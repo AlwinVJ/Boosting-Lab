@@ -1,19 +1,12 @@
 // Placeholder content and data. All metrics are illustrative, not experimental results.
 
-export const PROGRESS = {
-  total: 6,
-  completed: 2,
-  hours: 18,
-  current: "03 — XGBoost and Modern Algorithms",
-};
-
 export const MODULES = [
-  { id: "01", title: "Boosting Fundamentals", to: "/fundamentals", time: "2.5 h", topics: ["Weak learners", "Sequential learning", "Bagging vs boosting"], status: "done" },
-  { id: "02", title: "Gradient Boosting Machines", to: "/algorithms", time: "3 h", topics: ["Residuals", "Loss functions", "Functional gradient descent"], status: "done" },
-  { id: "03", title: "XGBoost and Modern Algorithms", to: "/algorithms", time: "3.5 h", topics: ["Regularized objective", "Second-order gradients", "LightGBM, CatBoost"], status: "active" },
-  { id: "04", title: "Practical Implementation", to: "/implementation", time: "3 h", topics: ["scikit-learn", "xgboost", "Hyperparameters"], status: "todo" },
-  { id: "05", title: "Advanced Optimization", to: "/advanced", time: "3 h", topics: ["Early stopping", "Regularization", "Imbalance"], status: "todo" },
-  { id: "06", title: "Real-World Applications", to: "/case-study", time: "3 h", topics: ["Credit risk", "Evaluation", "Interpretation"], status: "todo" },
+  { id: "01", title: "Boosting Fundamentals", to: "/fundamentals", time: "2.5 h", topics: ["Weak learners", "Sequential learning", "Bagging vs boosting"] },
+  { id: "02", title: "Gradient Boosting Machines", to: "/algorithms", time: "3 h", topics: ["Residuals", "Loss functions", "Functional gradient descent"] },
+  { id: "03", title: "XGBoost & Modern Algorithms", to: "/algorithms", time: "3.5 h", topics: ["Regularized objective", "Second-order gradients", "LightGBM, CatBoost"] },
+  { id: "04", title: "Practical Implementation", to: "/implementation", time: "3 h", topics: ["scikit-learn", "xgboost", "Hyperparameters"] },
+  { id: "05", title: "Advanced Optimization", to: "/advanced", time: "3 h", topics: ["Early stopping", "Regularization", "Imbalance"] },
+  { id: "06", title: "Real-World Applications", to: "/case-study", time: "3 h", topics: ["Credit risk", "Evaluation", "Interpretation"] },
 ] as const;
 
 export type Algorithm = {
