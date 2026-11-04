@@ -54,8 +54,8 @@ function GradientBoostingPage() {
           <KeyTakeaway
             title="The 3 Pillars of Gradient Boosting"
             points={[
-              "Loss Function: Any loss L(y, F(x)) that is differentiable with respect to the model's predictions F(x).",
-              "Weak Learner: Typically a shallow regression tree (depth 3 to 6) fit to pseudo-residuals.",
+              "Loss Function: Any loss L(y, F(x)) that is differentiable (or sub-differentiable, e.g. MAE via subgradients) with respect to predictions F(x). For second-order methods (XGBoost, LightGBM), the loss must be twice-differentiable with strictly positive Hessians (h_i > 0) for strict convexity.",
+              "Weak Learner: Typically a shallow regression tree (depth 3 to 6) fit to pseudo-residuals (negative gradients).",
               "Additive Model & Shrinkage: New trees are scaled by a shrinkage factor ν ∈ (0, 1] before being accumulated into the ensemble: F_m(x) = F_{m-1}(x) + ν · h_m(x).",
             ]}
           />
@@ -218,13 +218,13 @@ function GradientBoostingPage() {
               note="Negative gradient is exactly equal to the ordinary arithmetic residual."
             />
             <MathBlock
-              label="Absolute Error / L1 (Robust Regression)"
-              formula="L(y, F) = |y - F| \implies r_{im} = \text{sign}(y_i - F_{m-1}(x_i))"
+              label="Absolute Error / L1 (Robust Regression via Subgradients)"
+              formula="L(y, F) = |y - F| \implies r_{im} = -\frac{\partial L}{\partial F} \stackrel{\text{subgrad}}{=} \text{sign}(y_i - F_{m-1}(x_i))"
               terms={[
                 ["F_0(x)", "\\text{median}(y) \\quad \\text{(Sample median)}"],
                 ["\\gamma_{jm}", "\\text{median}_{x_i \\in R_{jm}}(y_i - F_{m-1}(x_i))"],
               ]}
-              note="Robust against extreme outliers because gradient magnitude is bounded at ±1."
+              note="Non-differentiable at y = F: solved using the subgradient sign(y - F) (with 0 at y = F). Robust against extreme outliers because gradient magnitude is strictly bounded at ±1."
             />
           </div>
 
@@ -236,6 +236,16 @@ function GradientBoostingPage() {
             ]}
             note="Combines the fast convergence of MSE near zero with the outlier resistance of MAE for large errors."
           />
+
+          <div className="rounded border border-hairline bg-surface p-4 text-xs space-y-2 text-muted-foreground">
+            <span className="font-mono font-semibold text-cyan">First-Order vs. Second-Order Loss Convexity Requirements</span>
+            <p>
+              In first-order Gradient Boosting (Friedman's original formulation and Scikit-Learn's <code className="text-foreground">GradientBoostingRegressor</code>), the objective only requires the loss to be sub-differentiable (such as MAE or Quantile loss). However, in modern second-order frameworks (such as XGBoost and LightGBM), leaf values are derived via a second-order Taylor expansion requiring the second derivative (Hessian <InlineMath formula="h_i = \partial^2 L / \partial F^2" />).
+            </p>
+            <p>
+              To ensure that leaf weight optimization <InlineMath formula="w_j^* = -G_j / (H_j + \lambda)" /> has a unique, strictly positive minimum, the loss function must be strictly convex (<InlineMath formula="h_i > 0" />). If the loss is non-convex or has zero second derivative (as in raw L1 loss where <InlineMath formula="h_i = 0" /> almost everywhere), exact second-order Taylor optimization cannot form a valid parabolic bowl without surrogate smoothing (such as Huber loss or pseudo-Huber approximations).
+            </p>
+          </div>
 
           <div className="rounded border border-violet/40 bg-violet/5 p-6 space-y-4">
             <div className="flex items-center justify-between">

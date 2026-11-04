@@ -132,9 +132,9 @@ model.fit(
 
 y_proba = model.predict_proba(X_test)[:, 1]
 print("LightGBM Test ROC-AUC:", roc_auc_score(y_test, y_proba))`,
-    out: ["Histogram binning completed (256 bins)", "Early stopping at iteration 218", "Test ROC-AUC: 0.9208"],
+    out: ["Histogram binning completed (max_bin=255)", "Early stopping at iteration 218", "Test ROC-AUC: 0.9208"],
     metrics: [["Accuracy", "0.88"], ["ROC-AUC", "0.92"], ["Fit Time", "0.4 s"]],
-    strengths: "Highest training speed and lowest memory consumption via histogram binning and GOSS.",
+    strengths: "High training throughput and memory efficiency via histogram binning (max_bin=255) and leaf-wise tree growth.",
   },
   catboost: {
     name: "CatBoost Classifier",
@@ -158,7 +158,7 @@ y_proba = model.predict_proba(X_test)[:, 1]
 print("CatBoost Test ROC-AUC:", roc_auc_score(y_test, y_proba))`,
     out: ["Ordered target statistics generated", "Best iteration: 265", "Test ROC-AUC: 0.9221"],
     metrics: [["Accuracy", "0.89"], ["ROC-AUC", "0.92"], ["Fit Time", "1.9 s"]],
-    strengths: "Native categorical feature processing without leakage, symmetric oblivious tree architecture.",
+    strengths: "Native categorical processing avoiding prediction shift and self-target leakage, symmetric oblivious tree architecture.",
   },
 };
 
@@ -196,11 +196,11 @@ function ImplementationPage() {
         />
         <div className="max-w-4xl space-y-6 md:ml-[136px]">
           <p className="text-base leading-relaxed text-muted-foreground">
-            Boosting algorithms excel primarily on structured, tabular datasets with mixed feature types (numeric, ordinal, categorical). Below is a representative credit risk classification sample showcasing numeric variables (<code className="text-cyan">credit_score</code>, <code className="text-cyan">dti</code>) and the target variable (<code className="text-orange">default</code>).
+            Boosting algorithms excel primarily on structured, tabular datasets with mixed feature types (numeric, ordinal, categorical). Below is a representative 5-record demonstration preview from a 5,000-sample synthetic educational dataset showcasing numeric variables (<code className="text-cyan">credit_score</code>, <code className="text-cyan">dti</code>) and the target variable (<code className="text-orange">default</code>).
           </p>
           <DatasetPreview
-            name="credit_risk_train.csv"
-            meta="5,000 samples × 8 features · Binary Target"
+            name="credit_risk_train.csv (5-Record Pedagogical Demo Preview)"
+            meta="5,000 synthetic samples × 8 features · Binary Target"
             rows={CREDIT_SAMPLE}
           />
         </div>
@@ -280,12 +280,17 @@ function ImplementationPage() {
                 <Pill tone="cyan">{model.file}</Pill>
               </div>
               <CodeBlock code={model.code} filename={model.file} />
-              <ConsoleOutput lines={model.out} />
+              <div className="space-y-1">
+                <div className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground/80">
+                  Console Output (Illustrative Demonstration)
+                </div>
+                <ConsoleOutput lines={model.out} />
+              </div>
             </div>
 
             <aside className="p-5 space-y-6">
               <div>
-                <div className="eyebrow mb-2">Performance Metrics</div>
+                <div className="eyebrow mb-2">Performance Metrics (Illustrative Test Set)</div>
                 <div className="divide-y divide-hairline rounded border border-hairline">
                   {model.metrics.map(([label, val], idx) => (
                     <MetricCard

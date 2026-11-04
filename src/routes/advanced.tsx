@@ -86,12 +86,12 @@ function AdvancedPage() {
           index="02"
           eyebrow="Convergence Control"
           title="Early Stopping Dynamics & Framework Mechanics"
-          description="Because boosting iteratively reduces training error to zero, training unchecked for thousands of rounds inevitably causes overfitting. Early stopping halts training at the exact point of peak validation performance."
+          description="Because boosting ensembles can drive empirical training loss toward zero with sufficient tree depth, training unchecked for thousands of rounds risks overfitting. Early stopping halts execution at the point of optimal validation performance."
         />
         <div className="grid gap-8 md:ml-[136px] lg:grid-cols-[1.2fr_1fr]">
           <div className="space-y-4 text-sm leading-relaxed text-muted-foreground">
             <p>
-              As boosting progresses, training loss decreases monotonically. Validation loss initially drops alongside it, reaches a global minimum (the sweet spot of optimal model capacity), and then begins creeping upwards as the ensemble memorizes noise.
+              Under deterministic full-batch gradient boosting, training loss decreases monotonically. In stochastic settings (using row or column subsampling), training loss can exhibit small fluctuations but trends steadily downward. Meanwhile, validation loss initially drops, reaches a minimum (the point of optimal generalization capacity), and subsequently rises as the model fits idiosyncratic noise.
             </p>
             <div className="rounded border border-hairline bg-surface p-4 text-xs space-y-2">
               <div><strong className="text-foreground">Patience Parameter (stopping_rounds):</strong> Number of successive iterations with no validation metric improvement before execution halts.</div>

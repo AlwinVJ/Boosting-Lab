@@ -107,7 +107,7 @@ function AlgorithmsPage() {
           index="02"
           eyebrow="Categorical Excellence"
           title="CatBoost: Ordered Boosting & Oblivious Trees"
-          description="Developed by Yandex researchers (Dorogush et al. 2017 initial release; Prokhorenkova et al. NeurIPS 2018), CatBoost eliminates target leakage, handles high-cardinality categorical features natively, and uses symmetric decision structures."
+          description="Developed by Yandex researchers (Dorogush et al. 2017 initial release; Prokhorenkova et al. NeurIPS 2018), CatBoost mitigates prediction shift and self-target leakage, handles high-cardinality categorical features natively, and uses symmetric decision structures."
         />
         <div className="max-w-4xl space-y-8 md:ml-[136px]">
           <div>
@@ -136,7 +136,7 @@ function AlgorithmsPage() {
                 ["P", "Prior value: overall mean of the target variable across the entire dataset"],
                 ["a > 0", "Weight coefficient of the prior (smoothes categories with few observations)"],
               ]}
-              note="Because the target of sample i is NEVER included in its own statistic, target leakage is mathematically impossible within each permutation sequence."
+              note="Because the target of sample i is omitted from its own summary statistic, self-target leakage within the training permutation is eliminated. (Note: External data leakage—such as preprocessing or encoding before cross-validation splits—is a pipeline defect that no internal algorithm mechanism can prevent.)"
             />
           </div>
 
@@ -225,7 +225,7 @@ function AlgorithmsPage() {
                 "Fast on small datasets; strictly single-core CPU in vanilla implementations",
                 "Slow on large N due to exact sorting at every split node",
                 "Highly scalable parallel CPU & GPU exact greedy and histogram split search",
-                "Fastest CPU training throughput on large dense datasets (N > 10⁵)",
+                "Often fastest CPU training throughput on large datasets; speed depends on feature count, max_bin, and thread count",
                 "Moderate CPU training; fast GPU acceleration; ultra-low latency SIMD CPU inference"
               ],
               [
