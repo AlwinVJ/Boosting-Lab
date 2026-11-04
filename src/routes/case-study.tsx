@@ -5,6 +5,13 @@ import { CREDIT_SAMPLE, MODEL_METRICS } from "@/data/content";
 import { KeyTakeaway, WarningCallout, WorkedExample } from "@/components/lab/PedagogicalComponents";
 import { QuizBlock } from "@/components/lab/QuizBlock";
 import { MathBlock, InlineMath } from "@/components/lab/MathBlock";
+import {
+  FINANCIAL_CONSTANTS,
+  OPERATING_POINT_BASELINE,
+  OPERATING_POINT_BALANCED,
+  OPERATING_POINT_BAYES_OPTIMAL,
+} from "@/lib/credit-risk-engine";
+import { SYNTHETIC_DATA_METADATA } from "@/data/credit-dataset-generator";
 
 export const Route = createFileRoute("/case-study")({
   head: () => ({
@@ -158,7 +165,7 @@ function CaseStudyPage() {
         <div className="max-w-4xl space-y-6 md:ml-[136px]">
           <DatasetPreview
             name="synthetic_loan_portfolio.csv"
-            meta="5-record demonstration preview from 5,000-observation synthetic schema · Default Prevalence = 14.8% · Pedagogical Demonstration"
+            meta="5-record demonstration preview from reproducible 5,000-observation synthetic generator (Mulberry32 seed=42) · Default Prevalence = 14.8% · Pedagogical Demonstration"
             rows={CREDIT_SAMPLE}
           />
 
@@ -418,7 +425,7 @@ xgb_model.fit(X_train, y_train)`}</code>
             <div className="rounded border border-hairline bg-surface p-4 text-xs space-y-1.5">
               <span className="font-mono font-semibold text-violet">4. XGBoost (Regularized Newton Boosting)</span>
               <p className="text-muted-foreground leading-relaxed">
-                Second-order Taylor expansion with Newton leaf updates, L1 (<InlineMath formula="\alpha" />) and L2 (<InlineMath formula="\lambda" />) leaf penalties, and native missing-value routing. Achieves superior discriminative power (ROC-AUC 0.92) and calibration precision.
+                Second-order Taylor expansion with Newton leaf updates, L1 (<InlineMath formula="\alpha" />) and L2 (<InlineMath formula="\lambda" />) leaf penalties, and native missing-value routing. Achieves strong discriminative separation on this synthetic benchmark (illustrative test ROC-AUC 0.92) with second-order leaf weight regularization.
               </p>
             </div>
           </div>
@@ -430,7 +437,7 @@ xgb_model.fit(X_train, y_train)`}</code>
               rows={MODEL_METRICS.map((m) => [m.model, m.accuracy.toFixed(2), m.precision.toFixed(2), m.recall.toFixed(2), m.f1.toFixed(2), m.auc.toFixed(2)])}
             />
             <ChartContainer
-              title="Multi-Metric Model Benchmark"
+              title="Multi-Metric Model Benchmark (Illustrative Simulation)"
               subtitle="Comparing F1, ROC-AUC, and Recall across models"
             >
               <ModelComparisonChart />
@@ -462,15 +469,42 @@ xgb_model.fit(X_train, y_train)`}</code>
                 <ul className="list-disc pl-4 space-y-1 text-muted-foreground">
                   <li><strong>Brier Score:</strong> Mean squared difference between predicted default probability and true outcome: <InlineMath formula="\frac{1}{N}\sum (p_i - y_i)^2" />. Lower is better.</li>
                   <li><strong>Log Loss (Cross-Entropy):</strong> Severe penalty on confident incorrect predictions: <InlineMath formula="-\frac{1}{N}\sum [y_i \ln p_i + (1-y_i)\ln(1-p_i)]" />.</li>
-                  <li><strong>Probability Calibration:</strong> Reliable estimates ensure that if 1,000 applicants receive <InlineMath formula="\hat{p} = 0.15" />, exactly 150 default. Necessary for Expected Credit Loss (ECL) calculation.</li>
+                  <li><strong>Probability Calibration:</strong> Statistical relationship ensuring empirical default frequencies match predicted probabilities in expectation: <InlineMath formula="P(Y = 1 \mid \hat{p} = p) \approx p" /> (e.g. across cohorts predicted near 15%, empirical default rates converge statistically toward ~15%, rather than an exact integer count in every finite realization). Crucial for Expected Credit Loss (ECL = PD × LGD × EAD).</li>
                 </ul>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded border border-hairline bg-surface p-5 text-xs space-y-3 text-muted-foreground">
+            <div className="font-mono font-semibold uppercase text-violet">
+              Conceptual Framework: Discrimination vs. Calibration vs. Ranking vs. Threshold Selection
+            </div>
+            <p className="leading-relaxed">
+              A foundational mistake in applied machine learning is conflating distinct stages of probabilistic modeling:
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded bg-surface-2/60 p-3 space-y-1">
+                <span className="font-semibold text-foreground">1. Discrimination &amp; Ranking:</span>
+                <p className="text-muted-foreground">The ability to assign higher scores to defaulters than solvent borrowers. Invariant to any monotonic transformation of scores; measured by ROC-AUC and PR-AUC.</p>
+              </div>
+              <div className="rounded bg-surface-2/60 p-3 space-y-1">
+                <span className="font-semibold text-foreground">2. Probability Calibration:</span>
+                <p className="text-muted-foreground">The accuracy of probability magnitudes. Tree boosting outputs raw margins that push probabilities to 0 or 1; <code className="text-foreground">predict_proba</code> does NOT guarantee calibrated default rates.</p>
+              </div>
+              <div className="rounded bg-surface-2/60 p-3 space-y-1">
+                <span className="font-semibold text-foreground">3. Post-Hoc Calibration Techniques:</span>
+                <p className="text-muted-foreground"><strong>Platt Scaling:</strong> Fits a 2-parameter logistic sigmoid on logits. Effective on smaller validation cohorts without overfitting, but assumes sigmoidal distortion. <strong>Isotonic Regression:</strong> Non-parametric step function (PAVA algorithm). More flexible for arbitrary distortions, but requires larger calibration datasets (&ge;1,000 samples) and can produce step artifacts. Neither method is universally superior.</p>
+              </div>
+              <div className="rounded bg-surface-2/60 p-3 space-y-1">
+                <span className="font-semibold text-foreground">4. Decision Thresholding:</span>
+                <p className="text-muted-foreground">Executive business boundary (<InlineMath formula="\theta" />) applied <em>after</em> calibration. Maps probabilities to business actions (approve/reject) to optimize an institutional loss matrix.</p>
               </div>
             </div>
           </div>
 
           <div className="space-y-2">
             <h5 className="font-display text-xs font-semibold uppercase text-muted-foreground">
-              Reproducible Multi-Model Training &amp; Probability Evaluation (Python)
+              Reproducible Multi-Model Training &amp; Probability Evaluation (Python Demonstration)
             </h5>
             <pre className="overflow-x-auto rounded bg-surface-2 p-4 font-mono text-xs text-foreground">
               <code>{`from sklearn.linear_model import LogisticRegression
@@ -508,8 +542,8 @@ for name, model in models.items():
             points={[
               "Logistic Regression achieves respectable baseline accuracy (81%) and AUC (0.84) but suffers on Recall (62%) due to inability to model non-linear interactions without manual polynomial expansion.",
               "Random Forest improves AUC to 0.89 and Recall to 68% by decorrelating decision trees across bagging subsamples.",
-              "XGBoost captures complex non-linear interactions (e.g. low credit score only causing default when DTI exceeds 40%) to achieve highest ROC-AUC (0.92) and Recall (74% at threshold 0.50).",
-              "Probability Calibration Requirement: Raw predict_proba outputs from tree boosting reflect ranking order but are typically uncalibrated due to margin expansion. Post-hoc calibration (Platt scaling or isotonic regression) is required before using PD estimates in regulatory Expected Credit Loss (ECL = PD × LGD × EAD) calculations.",
+              "In this illustrative benchmark, XGBoost captures non-linear interactions (e.g. low credit score coupled with high DTI) to attain the highest test ROC-AUC (0.92) and Recall (74% at threshold 0.50) among evaluated baselines.",
+              "Probability Calibration Requirement: Raw predict_proba outputs from tree boosting reflect ranking order but are typically uncalibrated due to margin expansion. Post-hoc calibration (Platt scaling or isotonic regression) is evaluated before using PD estimates in regulatory Expected Credit Loss (ECL = PD × LGD × EAD) calculations.",
             ]}
           />
         </div>
@@ -577,29 +611,29 @@ for name, model in models.items():
           </div>
 
           <WarningCallout title="Threshold Optimization vs Probability Calibration">
-            Do not confuse a model's <em>probability calibration</em> with its <em>decision threshold</em>. Probability calibration ensures that predicted probabilities reflect empirical ground-truth default rates (e.g., among borrowers predicted at 10%, exactly 10% default). The decision threshold <InlineMath formula="\theta" /> is an executive business policy applied to those calibrated probabilities to minimize financial loss under the bank's specific cost matrix.
+            Do not confuse a model's <em>probability calibration</em> with its <em>decision threshold</em>. Probability calibration ensures that predicted probabilities reflect empirical ground-truth default rates in expectation (e.g., across cohorts predicted near 10%, the long-run empirical default frequency converges to ~10%). The decision threshold <InlineMath formula="\theta" /> is an executive business policy applied to those calibrated probabilities to minimize financial loss under the bank's specific cost matrix.
           </WarningCallout>
 
           <WorkedExample
-            title="Threshold Shift Impact on Portfolio Performance (1,000-Applicant Illustrative Cohort)"
-            description="Evaluating an illustrative 1,000-applicant benchmark cohort with 14.8% default prevalence (148 actual defaults, 852 actual non-defaulters). Note: The confusion matrices below represent an illustrative benchmark simulation to demonstrate cost-sensitive threshold dynamics; cost reductions reflect this specific 1,000-loan cohort size."
+            title={`Threshold Shift Impact on Portfolio Performance (${FINANCIAL_CONSTANTS.TOTAL_EVALUATION_COHORT.toLocaleString()}-Applicant Illustrative Cohort)`}
+            description={`Evaluating an illustrative ${FINANCIAL_CONSTANTS.TOTAL_EVALUATION_COHORT.toLocaleString()}-applicant benchmark cohort with ${((FINANCIAL_CONSTANTS.COHORT_ACTUAL_DEFAULTS / FINANCIAL_CONSTANTS.TOTAL_EVALUATION_COHORT) * 100).toFixed(1)}% default prevalence (${FINANCIAL_CONSTANTS.COHORT_ACTUAL_DEFAULTS} actual defaults, ${FINANCIAL_CONSTANTS.COHORT_ACTUAL_NON_DEFAULTS} actual non-defaulters). Note: The confusion matrices below represent an illustrative benchmark simulation to demonstrate cost-sensitive threshold dynamics; cost reductions reflect this specific ${FINANCIAL_CONSTANTS.TOTAL_EVALUATION_COHORT.toLocaleString()}-loan cohort size.`}
             steps={[
               {
-                label: "Operating Point 1: Standard Symmetric Threshold (θ = 0.50)",
-                calculation: "Approved: 884 applicants (116 rejected).\n• Confusion Matrix: 96 TP, 20 FP, 832 TN, 52 FN.\n• Totals: TP + FN = 148 defaults; TN + FP = 852 non-defaults.\n• False Negatives (defaults approved): 52 × $15,000 = $780,000 write-off.\n• False Positives (good borrowers rejected): 20 × $1,200 = $24,000 lost profit.\nTotal Portfolio Loss: $780,000 + $24,000 = $804,000.\nRecall: 64.9% (96/148). Precision: 82.8% (96/116).",
-                result: "Baseline Portfolio Cost: $804,000",
+                label: OPERATING_POINT_BASELINE.label,
+                calculation: `Approved: ${OPERATING_POINT_BASELINE.approved} applicants (${OPERATING_POINT_BASELINE.rejected} rejected).\n• Confusion Matrix: ${OPERATING_POINT_BASELINE.cm.tp} TP, ${OPERATING_POINT_BASELINE.cm.fp} FP, ${OPERATING_POINT_BASELINE.cm.tn} TN, ${OPERATING_POINT_BASELINE.cm.fn} FN.\n• Totals: TP + FN = ${OPERATING_POINT_BASELINE.actualDefaults} defaults; TN + FP = ${OPERATING_POINT_BASELINE.actualNonDefaults} non-defaults.\n• False Negatives (defaults approved): ${OPERATING_POINT_BASELINE.cm.fn} × $${FINANCIAL_CONSTANTS.DEFAULT_C_FN.toLocaleString()} = $${(OPERATING_POINT_BASELINE.cm.fn * FINANCIAL_CONSTANTS.DEFAULT_C_FN).toLocaleString()} write-off.\n• False Positives (good borrowers rejected): ${OPERATING_POINT_BASELINE.cm.fp} × $${FINANCIAL_CONSTANTS.DEFAULT_C_FP.toLocaleString()} = $${(OPERATING_POINT_BASELINE.cm.fp * FINANCIAL_CONSTANTS.DEFAULT_C_FP).toLocaleString()} lost profit.\nTotal Portfolio Loss: $${OPERATING_POINT_BASELINE.expectedCost.toLocaleString()}.\nRecall: ${(OPERATING_POINT_BASELINE.recall * 100).toFixed(1)}% (${OPERATING_POINT_BASELINE.cm.tp}/${OPERATING_POINT_BASELINE.actualDefaults}). Precision: ${(OPERATING_POINT_BASELINE.precision * 100).toFixed(1)}% (${OPERATING_POINT_BASELINE.cm.tp}/${OPERATING_POINT_BASELINE.rejected}).`,
+                result: `Baseline Portfolio Cost: $${OPERATING_POINT_BASELINE.expectedCost.toLocaleString()}`,
                 explanation: "The default 0.50 cutoff allows 52 defaulting borrowers to receive funding, creating severe bad-debt write-offs because the classifier treats $1,200 errors and $15,000 errors identically.",
               },
               {
-                label: "Operating Point 2: Balanced Production Operating Threshold (θ = 0.18)",
-                calculation: "Approved: 780 applicants (220 rejected).\n• Confusion Matrix: 130 TP, 90 FP, 762 TN, 18 FN.\n• Totals: TP + FN = 148 defaults; TN + FP = 852 non-defaults.\n• False Negatives: drops from 52 to 18 (130 defaults caught). 18 × $15,000 = $270,000.\n• False Positives: rises to 90 applicants. 90 × $1,200 = $108,000 lost profit.\nTotal Portfolio Loss: $270,000 + $108,000 = $378,000.\nRecall: 87.8% (130/148). Precision: 59.1% (130/220).",
-                result: "Net Portfolio Cost: $378,000 (Cohort Cost Reduction: $426,000 / 53.0%)",
+                label: OPERATING_POINT_BALANCED.label,
+                calculation: `Approved: ${OPERATING_POINT_BALANCED.approved} applicants (${OPERATING_POINT_BALANCED.rejected} rejected).\n• Confusion Matrix: ${OPERATING_POINT_BALANCED.cm.tp} TP, ${OPERATING_POINT_BALANCED.cm.fp} FP, ${OPERATING_POINT_BALANCED.cm.tn} TN, ${OPERATING_POINT_BALANCED.cm.fn} FN.\n• Totals: TP + FN = ${OPERATING_POINT_BALANCED.actualDefaults} defaults; TN + FP = ${OPERATING_POINT_BALANCED.actualNonDefaults} non-defaults.\n• False Negatives: drops from ${OPERATING_POINT_BASELINE.cm.fn} to ${OPERATING_POINT_BALANCED.cm.fn} (${OPERATING_POINT_BALANCED.cm.tp} defaults caught). ${OPERATING_POINT_BALANCED.cm.fn} × $${FINANCIAL_CONSTANTS.DEFAULT_C_FN.toLocaleString()} = $${(OPERATING_POINT_BALANCED.cm.fn * FINANCIAL_CONSTANTS.DEFAULT_C_FN).toLocaleString()}.\n• False Positives: rises to ${OPERATING_POINT_BALANCED.cm.fp} applicants. ${OPERATING_POINT_BALANCED.cm.fp} × $${FINANCIAL_CONSTANTS.DEFAULT_C_FP.toLocaleString()} = $${(OPERATING_POINT_BALANCED.cm.fp * FINANCIAL_CONSTANTS.DEFAULT_C_FP).toLocaleString()} lost profit.\nTotal Portfolio Loss: $${OPERATING_POINT_BALANCED.expectedCost.toLocaleString()}.\nRecall: ${(OPERATING_POINT_BALANCED.recall * 100).toFixed(1)}% (${OPERATING_POINT_BALANCED.cm.tp}/${OPERATING_POINT_BALANCED.actualDefaults}). Precision: ${(OPERATING_POINT_BALANCED.precision * 100).toFixed(1)}% (${OPERATING_POINT_BALANCED.cm.tp}/${OPERATING_POINT_BALANCED.rejected}).`,
+                result: `Net Portfolio Cost: $${OPERATING_POINT_BALANCED.expectedCost.toLocaleString()} (Cohort Cost Reduction: $${OPERATING_POINT_BALANCED.savingsVsBaseline.toLocaleString()} / ${(OPERATING_POINT_BALANCED.savingsPercentage * 100).toFixed(1)}%)`,
                 explanation: "A balanced operating threshold favored by risk committees: it cuts bad-debt write-offs by 65% while maintaining acceptable 78.0% commercial loan origination volume (approving 780 of 1,000 applicants).",
               },
               {
-                label: "Operating Point 3: Theoretical Bayes-Optimal Cutoff (θ* ≈ 0.074)",
-                calculation: "Approved: 678 applicants (322 rejected).\n• Confusion Matrix: 142 TP, 180 FP, 672 TN, 6 FN.\n• Totals: TP + FN = 148 defaults; TN + FP = 852 non-defaults.\n• False Negatives: drops to 6 (142 defaults caught). 6 × $15,000 = $90,000.\n• False Positives: rises to 180 applicants. 180 × $1,200 = $216,000 lost profit.\nTotal Portfolio Loss: $90,000 + $216,000 = $306,000.\nRecall: 95.9% (142/148). Precision: 44.1% (142/322).",
-                result: "Net Portfolio Cost: $306,000 (Cohort Cost Reduction: $498,000 / 61.9%)",
+                label: OPERATING_POINT_BAYES_OPTIMAL.label,
+                calculation: `Approved: ${OPERATING_POINT_BAYES_OPTIMAL.approved} applicants (${OPERATING_POINT_BAYES_OPTIMAL.rejected} rejected).\n• Confusion Matrix: ${OPERATING_POINT_BAYES_OPTIMAL.cm.tp} TP, ${OPERATING_POINT_BAYES_OPTIMAL.cm.fp} FP, ${OPERATING_POINT_BAYES_OPTIMAL.cm.tn} TN, ${OPERATING_POINT_BAYES_OPTIMAL.cm.fn} FN.\n• Totals: TP + FN = ${OPERATING_POINT_BAYES_OPTIMAL.actualDefaults} defaults; TN + FP = ${OPERATING_POINT_BAYES_OPTIMAL.actualNonDefaults} non-defaults.\n• False Negatives: drops to ${OPERATING_POINT_BAYES_OPTIMAL.cm.fn} (${OPERATING_POINT_BAYES_OPTIMAL.cm.tp} defaults caught). ${OPERATING_POINT_BAYES_OPTIMAL.cm.fn} × $${FINANCIAL_CONSTANTS.DEFAULT_C_FN.toLocaleString()} = $${(OPERATING_POINT_BAYES_OPTIMAL.cm.fn * FINANCIAL_CONSTANTS.DEFAULT_C_FN).toLocaleString()}.\n• False Positives: rises to ${OPERATING_POINT_BAYES_OPTIMAL.cm.fp} applicants. ${OPERATING_POINT_BAYES_OPTIMAL.cm.fp} × $${FINANCIAL_CONSTANTS.DEFAULT_C_FP.toLocaleString()} = $${(OPERATING_POINT_BAYES_OPTIMAL.cm.fp * FINANCIAL_CONSTANTS.DEFAULT_C_FP).toLocaleString()} lost profit.\nTotal Portfolio Loss: $${OPERATING_POINT_BAYES_OPTIMAL.expectedCost.toLocaleString()}.\nRecall: ${(OPERATING_POINT_BAYES_OPTIMAL.recall * 100).toFixed(1)}% (${OPERATING_POINT_BAYES_OPTIMAL.cm.tp}/${OPERATING_POINT_BAYES_OPTIMAL.actualDefaults}). Precision: ${(OPERATING_POINT_BAYES_OPTIMAL.precision * 100).toFixed(1)}% (${OPERATING_POINT_BAYES_OPTIMAL.cm.tp}/${OPERATING_POINT_BAYES_OPTIMAL.rejected}).`,
+                result: `Net Portfolio Cost: $${OPERATING_POINT_BAYES_OPTIMAL.expectedCost.toLocaleString()} (Cohort Cost Reduction: $${OPERATING_POINT_BAYES_OPTIMAL.savingsVsBaseline.toLocaleString()} / ${(OPERATING_POINT_BAYES_OPTIMAL.savingsPercentage * 100).toFixed(1)}%)`,
                 explanation: "Achieves the minimum possible expected monetary loss under well-calibrated probabilities. However, declining 32.2% of total applicants reduces origination volume (approval rate: 67.8%), illustrating why lenders subject to commercial growth targets often select intermediate points like θ = 0.18.",
               },
             ]}
