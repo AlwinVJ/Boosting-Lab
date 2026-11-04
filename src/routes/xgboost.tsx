@@ -45,7 +45,7 @@ function XGBoostPage() {
           index="01"
           eyebrow="Architectural Innovation"
           title="Why XGBoost Dominated Machine Learning"
-          description="Released in 2014–2016, XGBoost rapidly became the benchmark solution across industry and competitive data science (winning over 17 out of 29 Kaggle challenges in 2015)."
+          description="Initiated by Tianqi Chen in 2014 within DMLC and published with Carlos Guestrin at ACM SIGKDD 2016, XGBoost rapidly became the benchmark solution across industry and competitive data science."
         />
         <div className="max-w-4xl space-y-6 md:ml-[136px]">
           <p className="text-base leading-relaxed text-muted-foreground">
@@ -121,27 +121,28 @@ function XGBoostPage() {
           <DerivationStep
             step={4}
             title="Grouping by Leaves (Instance Sets I_j)"
-            formula="\tilde{\mathcal{L}}^{(t)} = \sum_{j=1}^T \left[ \left(\sum_{i \in I_j} g_i\right) w_j + \frac{1}{2}\left(\sum_{i \in I_j} h_i + \lambda\right) w_j^2 \right] + \gamma T"
+            formula="\tilde{\mathcal{L}}^{(t)} = \sum_{j=1}^T \left[ G_j w_j + \frac{1}{2}\left(H_j + \lambda\right) w_j^2 + \alpha |w_j| \right] + \gamma T"
             terms={[
               ["I_j", "Set of data points mapped to leaf j: I_j = \\{i : q(x_i) = j\\}"],
-              ["G_j", "\\sum_{i \\in I_j} g_i \\quad \\text{(Sum of gradients in leaf j)}"],
-              ["H_j", "\\sum_{i \\in I_j} h_i \\quad \\text{(Sum of Hessians in leaf j)}"],
+              ["G_j", "\\sum_{i \\in I_j} g_i \\quad \\text{(Sum of first-order gradients in leaf j)}"],
+              ["H_j", "\\sum_{i \\in I_j} h_i \\quad \\text{(Sum of second-order Hessians in leaf j)}"],
+              ["\\lambda, \\alpha", "L2 and L1 regularization coefficients on leaf weights"],
             ]}
           >
-            By defining <InlineMath formula="G_j = \sum_{i \in I_j} g_i" /> and <InlineMath formula="H_j = \sum_{i \in I_j} h_i" />, the objective decomposes into independent quadratic equations for each leaf <InlineMath formula="j" />.
+            By defining <InlineMath formula="G_j = \sum_{i \in I_j} g_i" /> and <InlineMath formula="H_j = \sum_{i \in I_j} h_i" />, the global objective decomposes into <InlineMath formula="T" /> independent single-variable optimization problems—one for each leaf <InlineMath formula="j" />.
           </DerivationStep>
 
           <DerivationStep
             step={5}
-            title="Optimal Leaf Weight w_j* & Optimal Objective Value"
-            formula="w_j^* = -\frac{G_j}{H_j + \lambda}, \qquad \tilde{\mathcal{L}}^*(q) = -\frac{1}{2} \sum_{j=1}^T \frac{G_j^2}{H_j + \lambda} + \gamma T"
+            title="Optimal Leaf Weight w_j* & Structure Score"
+            formula="w_j^* = \begin{cases} -\dfrac{G_j}{H_j + \lambda} & \text{if } \alpha = 0 \\[10pt] -\text{sign}(G_j) \dfrac{\max(0, |G_j| - \alpha)}{H_j + \lambda} & \text{if } \alpha > 0 \end{cases}"
             terms={[
-              ["w_j^*", "The optimal prediction value for leaf j (found by setting derivative ∂L/∂w_j = 0)"],
-              ["\\tilde{\\mathcal{L}}^*(q)", "Structure score: measures the quality of tree structure q"],
+              ["w_j^*", "The optimal prediction value for leaf j"],
+              ["\\tilde{\\mathcal{L}}^*(q)", "Structure score with L2 only (\\alpha=0): -\\frac{1}{2} \\sum_{j=1}^T \\frac{G_j^2}{H_j + \\lambda} + \\gamma T"],
             ]}
-            note="If λ = 0, w_j* is the standard Newton-Raphson step -G_j / H_j. The L2 penalty λ guarantees denominator stability when H_j is small."
+            note="When α = 0, setting the first derivative to zero yields the standard regularized Newton step. When α > 0, the subgradient condition produces the soft-thresholding operator: if |G_j| ≤ α, the optimal leaf weight is driven exactly to zero, pruning that leaf's impact!"
           >
-            This gives the exact analytical formula for how much each leaf should output.
+            This gives the exact analytical formula for each leaf weight. Substituting <InlineMath formula="w_j^*" /> back into the objective yields the structure score <InlineMath formula="\tilde{\mathcal{L}}^*(q)" />, which quantifies the quality of tree topology <InlineMath formula="q" />.
           </DerivationStep>
         </div>
       </Container>
@@ -164,7 +165,7 @@ function XGBoostPage() {
               ["(G_L+G_R, H_L+H_R)", "Original unsplit parent node statistics"],
               ["\\gamma", "Complexity penalty for creating an additional leaf"],
             ]}
-            note="A split is only accepted if Gain > 0. This naturally implements pre-pruning!"
+            note="A split is only accepted if Gain > 0. This naturally implements pre-pruning! Note: Formula shown assumes standard L2 regularization (α = 0). When L1 penalty α > 0 is configured, each G² term is replaced by the soft-thresholded quantity (max(0, |G| - α))²."
           />
 
           <KeyTakeaway
