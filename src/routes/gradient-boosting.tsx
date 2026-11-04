@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Container, PageHero, SectionHeader, SectionIndex } from "@/components/lab/primitives";
+import { Container, PageHero, SectionHeader, SectionIndex, Pill } from "@/components/lab/primitives";
 import { MathBlock, InlineMath } from "@/components/lab/MathBlock";
 import { DerivationStep, WorkedExample, KeyTakeaway, WarningCallout } from "@/components/lab/PedagogicalComponents";
 import { QuizBlock } from "@/components/lab/QuizBlock";
@@ -44,7 +44,7 @@ function GradientBoostingPage() {
           index="01"
           eyebrow="Conceptual Paradigm"
           title="From AdaBoost to Gradient Boosting"
-          description="While AdaBoost was restricted to exponential loss for binary classification, Friedman (2001) realized that boosting could be generalized to any differentiable loss function (MSE, MAE, Huber, Deviance/Log-loss) by treating model fitting as gradient descent in function space."
+          description="While AdaBoost was restricted to exponential loss for binary classification, Jerome Friedman (1999 technical report, published 2001 in Annals of Statistics) realized that boosting could be generalized to any differentiable loss function (MSE, MAE, Huber, Bernoulli deviance) by treating model fitting as gradient descent in function space."
         />
         <div className="max-w-4xl space-y-6 md:ml-[136px]">
           <p className="text-base leading-relaxed text-muted-foreground">
@@ -183,32 +183,89 @@ function GradientBoostingPage() {
         <SectionHeader
           id="derivation"
           index="04"
-          eyebrow="Loss Functions"
+          eyebrow="Loss Functions & Gradients"
           title="Common Loss Functions & Their Pseudo-Residuals"
+          description="A rigorous comparison of regression and classification losses, resolving the label convention between {0, 1} Bernoulli deviance and {-1, +1} margin deviance."
         />
-        <div className="max-w-4xl space-y-6 md:ml-[136px]">
-          <div className="grid gap-4 sm:grid-cols-2">
+        <div className="max-w-4xl space-y-8 md:ml-[136px]">
+          <div className="grid gap-6 sm:grid-cols-2">
             <MathBlock
               label="Squared Error (Regression)"
               formula="L(y, F) = \frac{1}{2}(y - F)^2 \implies r_{im} = y_i - F_{m-1}(x_i)"
-              note="Negative gradient is exactly equal to the ordinary residual."
+              terms={[
+                ["F_0(x)", "\\bar{y} \\quad \\text{(Sample mean)}"],
+                ["\\gamma_{jm}", "\\text{mean}_{x_i \\in R_{jm}}(r_{im}) \\quad \\text{(Average residual in leaf)}"],
+              ]}
+              note="Negative gradient is exactly equal to the ordinary arithmetic residual."
             />
             <MathBlock
               label="Absolute Error / L1 (Robust Regression)"
               formula="L(y, F) = |y - F| \implies r_{im} = \text{sign}(y_i - F_{m-1}(x_i))"
-              note="Robust against outliers because gradient magnitude is always ±1."
+              terms={[
+                ["F_0(x)", "\\text{median}(y) \\quad \\text{(Sample median)}"],
+                ["\\gamma_{jm}", "\\text{median}_{x_i \\in R_{jm}}(y_i - F_{m-1}(x_i))"],
+              ]}
+              note="Robust against extreme outliers because gradient magnitude is bounded at ±1."
             />
-            <MathBlock
-              label="Binary Deviance / Log-Loss (Classification)"
-              formula="L(y, F) = \ln(1 + e^{-2y F}) \implies r_{im} = y_i - p_i"
-              terms={[["p_i", "\\frac{1}{1 + e^{-F(x_i)}} (predicted probability)"]]}
-              note="Residual is difference between true label y_i ∈ {0, 1} and probability p_i."
-            />
-            <MathBlock
-              label="Huber Loss (Smooth Transition)"
-              formula="r_{im} = \begin{cases} y_i - F(x_i) & \text{if } |y_i - F| \le \delta \\ \delta \cdot \text{sign}(y_i - F) & \text{otherwise} \end{cases}"
-              note="Acts like MSE near zero, but transitions to MAE for extreme outliers."
-            />
+          </div>
+
+          <MathBlock
+            label="Huber Loss (Smooth Transition between L2 and L1)"
+            formula="L_\delta(y, F) = \begin{cases} \frac{1}{2}(y - F)^2 & \text{if } |y - F| \le \delta \\ \delta |y - F| - \frac{1}{2}\delta^2 & \text{otherwise} \end{cases} \implies r_{im} = \begin{cases} y_i - F(x_i) & \text{if } |y_i - F| \le \delta \\ \delta \cdot \text{sign}(y_i - F) & \text{otherwise} \end{cases}"
+            terms={[
+              ["\\delta", "Transition threshold between quadratic and linear penalty (typically 90th percentile of residuals)"],
+            ]}
+            note="Combines the fast convergence of MSE near zero with the outlier resistance of MAE for large errors."
+          />
+
+          <div className="rounded border border-violet/40 bg-violet/5 p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h4 className="font-display text-lg font-semibold text-foreground">
+                Binary Classification: Bernoulli Deviance vs. Friedman's Formulation
+              </h4>
+              <Pill tone="violet">Mathematical Clarification</Pill>
+            </div>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              Literature in gradient boosting uses two different label conventions. Confusing these two formulations creates apparent mathematical contradictions in the gradient and probability mappings.
+            </p>
+
+            <div className="grid gap-6 md:grid-cols-2 pt-2">
+              <div className="rounded border border-hairline bg-surface p-4 space-y-3">
+                <div className="font-mono text-xs font-semibold text-cyan uppercase tracking-wider">
+                  Standard Modern Formulation: y ∈ &#123;0, 1&#125;
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Used in Scikit-Learn (<code className="text-violet">GradientBoostingClassifier</code>, <code className="text-violet">HistGradientBoostingClassifier</code>), XGBoost (<code className="text-violet">binary:logistic</code>), and LightGBM. The model outputs raw log-odds (logits) <InlineMath formula="F(x) = \ln(p / (1 - p))" />:
+                </p>
+                <div className="rounded bg-surface-2 p-3 font-mono text-xs space-y-2 text-foreground">
+                  <div>p_i = \sigma(F(x_i)) = \frac&#123;1&#125;&#123;1 + e^&#123;-F(x_i)&#125;&#125;</div>
+                  <div>L(y, F) = -[y \ln p + (1-y)\ln(1-p)] = \ln(1 + e^F) - yF</div>
+                  <div className="text-lime font-bold">r_&#123;im&#125; = -\frac&#123;\partial L&#125;&#123;\partial F&#125; = y_i - p_i</div>
+                  <div>F_0 = \ln\left(\frac&#123;\bar&#123;y&#125;&#125;&#123;1 - \bar&#123;y&#125;&#125;\right) \quad (\text&#123;log-odds of sample mean&#125;)</div>
+                  <div>\gamma_&#123;jm&#125; \approx \frac&#123;\sum_&#123;i \in R_&#123;jm&#125;&#125; (y_i - p_i)&#125;&#123;\sum_&#123;i \in R_&#123;jm&#125;&#125; p_i(1 - p_i)&#125; \quad (\text&#123;Newton-Raphson step&#125;)</div>
+                </div>
+              </div>
+
+              <div className="rounded border border-hairline bg-surface p-4 space-y-3">
+                <div className="font-mono text-xs font-semibold text-orange uppercase tracking-wider">
+                  Friedman (2001) Formulation: y ∈ &#123;-1, +1&#125;
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Used in Friedman's original 2001 paper to parallel AdaBoost's margin notation with probability <InlineMath formula="P(y = +1 \mid x) = \frac{1}{1 + e^{-2F(x)}}" />:
+                </p>
+                <div className="rounded bg-surface-2 p-3 font-mono text-xs space-y-2 text-foreground">
+                  <div>L(y, F) = \ln(1 + e^&#123;-2yF&#125;)</div>
+                  <div className="text-lime font-bold">\tilde&#123;r&#125;_&#123;im&#125; = -\frac&#123;\partial L&#125;&#123;\partial F&#125; = \frac&#123;2y_i&#125;&#123;1 + e^&#123;2y_i F(x_i)&#125;&#125;</div>
+                  <div>\text&#123;Relating to &#125; \tilde&#123;y&#125; = \frac&#123;y+1&#125;&#123;2&#125; \in \&#123;0, 1\&#125;:</div>
+                  <div className="text-cyan">\tilde&#123;r&#125;_&#123;im&#125; = 2(\tilde&#123;y&#125;_i - p_i)</div>
+                  <div>\gamma_&#123;jm&#125; \approx \frac&#123;\sum_&#123;i \in R_&#123;jm&#125;&#125; \tilde&#123;r&#125;_&#123;im&#125;&#125;&#123;\sum_&#123;i \in R_&#123;jm&#125;&#125; |\tilde&#123;r&#125;_&#123;im&#125;|(2 - |\tilde&#123;r&#125;_&#123;im&#125;|)&#125;</div>
+                </div>
+              </div>
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              Notice that the factor of 2 in Friedman's negative gradient arises from the <InlineMath formula="-2yF" /> scaling in the exponent. When implemented with the standard logit link <InlineMath formula="F = \ln(p/(1-p))" /> on binary labels <InlineMath formula="y \in \{0, 1\}" />, the negative gradient is simply <InlineMath formula="y_i - p_i" />.
+            </p>
           </div>
         </div>
       </Container>
@@ -271,7 +328,7 @@ function GradientBoostingPage() {
             <pre className="overflow-x-auto p-4 font-mono text-xs leading-6 text-foreground">
 {`from sklearn.ensemble import GradientBoostingRegressor, GradientBoostingClassifier
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.metrics import root_mean_squared_error, r2_score
 import numpy as np
 
 # 1. Instantiate GradientBoostingRegressor with tuned shrinkage and depth
@@ -293,9 +350,9 @@ train_loss = gbm.train_score_
 print(f"Initial loss: {train_loss[0]:.4f}")
 print(f"Final loss at iteration 300: {train_loss[-1]:.4f}")
 
-# 4. Predict and evaluate
+# 4. Predict and evaluate (using Scikit-Learn 1.4+ root_mean_squared_error)
 y_pred = gbm.predict(X_test)
-rmse = mean_squared_error(y_test, y_pred, squared=False)
+rmse = root_mean_squared_error(y_test, y_pred)
 r2 = r2_score(y_test, y_pred)
 print(f"Test RMSE: {rmse:.3f}")
 print(f"Test R² Score: {r2:.3f}")`}
