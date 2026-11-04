@@ -229,6 +229,18 @@ function ImplementationPage() {
                 XGBoost, LightGBM, and CatBoost handle <code className="text-violet">NaN</code> natively via learned default split directions. Traditional mean/median imputation actually destroys the signal that a value was missing!
               </p>
             </div>
+            <div className="rounded border border-hairline bg-surface p-5">
+              <div className="font-display text-sm font-semibold text-violet">Categorical Encoding Strategies</div>
+              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                One-hot encoding low-cardinality features (&lt; 10 levels) is safe, but high-cardinality features fragment tree depth. Use LightGBM's integer categorical binning or CatBoost's online target statistics instead of manual target encoding.
+              </p>
+            </div>
+            <div className="rounded border border-hairline bg-surface p-5">
+              <div className="font-display text-sm font-semibold text-orange">Monotonic Constraints</div>
+              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                In regulated banking and healthcare, domain physics require monotonic behavior (e.g. higher credit score must never increase default probability). Enforce this natively using <code className="text-cyan">monotone_constraints</code> in XGBoost/LightGBM.
+              </p>
+            </div>
           </div>
 
           <WarningCallout title="Critical Data Leakage Rules">
