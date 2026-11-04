@@ -43,13 +43,15 @@ function CaseStudyPage() {
       <Container className="pt-12 pb-6">
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <Pill tone="cyan">Illustrative Benchmark Simulation</Pill>
-          <span className="font-mono text-xs text-muted-foreground">Synthetically calibrated consumer installment loan portfolio</span>
+          <span className="font-mono text-xs text-muted-foreground">
+            Synthetically calibrated consumer installment portfolio ($100M principal simulation, N=5,000)
+          </span>
         </div>
         <div className="grid grid-cols-2 border border-hairline lg:grid-cols-4 [&>*]:border-hairline [&>*:not(:last-child)]:border-r">
-          <MetricCard label="Best Model (XGBoost)" value="0.92" delta="+0.08" hint="vs Logistic Regression" tone="violet" />
-          <MetricCard label="Target Recall" value="74%" delta="+12%" hint="at 82% precision" tone="cyan" />
-          <MetricCard label="Expected Loss Reduction" value="-$4.2M" delta="-18%" hint="annualized portfolio" tone="lime" />
-          <MetricCard label="Decision Latency" value="1.2 ms" delta="p99" hint="production inference" tone="orange" />
+          <MetricCard label="Best Model (XGBoost)" value="0.92" delta="+0.08" hint="ROC-AUC vs Logistic Reg" tone="violet" />
+          <MetricCard label="Target Recall" value="74%" delta="+12%" hint="at 82% precision (baseline)" tone="cyan" />
+          <MetricCard label="Simulated Loss Cut" value="-$4.2M" delta="-18%" hint="on $100M simulated book" tone="lime" />
+          <MetricCard label="Inference Latency" value="1.2 ms" delta="p99" hint="single-instance CPU inference" tone="orange" />
         </div>
       </Container>
 
@@ -59,41 +61,88 @@ function CaseStudyPage() {
           id="business-understanding"
           index="01"
           eyebrow="Business Framing"
-          title="Business Understanding & Asymmetric Costs"
-          description="In financial lending, credit risk is the probability that a borrower defaults on required contractual obligations. The cost of misclassification is severely asymmetric."
+          title="Credit Risk Formulation & Expected Credit Loss (ECL)"
+          description="In institutional banking and retail lending, credit risk is the probability that a counterparty fails to fulfill contractual debt obligations. Misclassification costs are deeply asymmetric."
         />
         <div className="max-w-4xl space-y-6 md:ml-[136px]">
-          <p className="text-base leading-relaxed text-muted-foreground">
-            A standard machine learning classifier treats False Positives and False Negatives equally. In commercial lending, however, these two errors have radically different financial consequences:
-          </p>
+          <div className="space-y-3 text-base leading-relaxed text-muted-foreground">
+            <p>
+              Credit risk is one of the oldest and most consequential risks in financial services. Under international regulatory frameworks—including the <strong>Basel Committee on Banking Supervision (BCBS)</strong>, <strong>IFRS 9</strong>, and US <strong>Current Expected Credit Losses (CECL)</strong> standards—a loan enters <strong className="text-foreground">default</strong> when either:
+            </p>
+            <ul className="list-disc pl-5 space-y-1 text-sm text-foreground/90">
+              <li>The borrower is more than <strong>90 days past due (90+ DPD)</strong> on any material credit obligation, or</li>
+              <li>The financial institution determines that the borrower is <strong>unlikely to pay</strong> their debt in full without recourse to actions such as liquidating collateral.</li>
+            </ul>
+          </div>
+
+          <MathBlock
+            label="Supervised Binary Classification Target"
+            formula="y_i = \begin{cases} 1 & \text{if borrower } i \text{ defaults within performance horizon } T \text{ (e.g. 12 months)} \\ 0 & \text{if borrower } i \text{ remains performing / repays contractual debt} \end{cases}"
+            note="Our supervised ensemble model takes applicant feature vector X_i (credit bureau score, income, debt burden, payment history) and predicts the conditional Probability of Default: p_i = P(y_i = 1 | X_i)."
+          />
+
+          <div className="space-y-3 text-sm leading-relaxed text-muted-foreground">
+            <h4 className="font-display text-base font-semibold text-foreground">
+              The Expected Credit Loss (ECL) Architecture
+            </h4>
+            <p>
+              In banking prudential regulation (Basel II/III), forecasting default is not an isolated exercise. The probability of default is a core multiplier inside the regulatory <strong>Expected Credit Loss (ECL)</strong> formula:
+            </p>
+          </div>
+
+          <MathBlock
+            label="The Expected Credit Loss (ECL) Decomposition"
+            formula="\text{ECL}_i = \text{PD}_i \times \text{LGD}_i \times \text{EAD}_i"
+            terms={[
+              ["\\text{PD}_i \\in [0, 1]", "Probability of Default: The likelihood of default over the evaluation horizon. This is the exact quantity predicted by our supervised machine learning classifier."],
+              ["\\text{LGD}_i \\in [0, 1]", "Loss Given Default: The economic percentage of exposure lost after collateral recovery, liquidation, and legal workout expenses (LGD = 1 - Recovery Rate)."],
+              ["\\text{EAD}_i \\ge 0", "Exposure at Default: Total gross credit obligation outstanding at default timestamp (drawn principal balance + credit conversion factor on undrawn lines)."],
+            ]}
+            note="Notice: Machine learning classification focuses specifically on estimating PD_i. In real-world banking, separate regression or survival models estimate LGD_i and EAD_i."
+          />
+
+          <div className="space-y-3 text-sm leading-relaxed text-muted-foreground">
+            <h4 className="font-display text-base font-semibold text-foreground">
+              Asymmetric Cost Matrix in Credit Decisioning
+            </h4>
+            <p>
+              A standard machine learning classifier treats Type I (False Positive) and Type II (False Negative) errors symmetrically. In credit underwriting, these errors have radically different financial consequences:
+            </p>
+          </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="rounded border border-orange/40 bg-orange/5 p-5">
               <div className="font-mono text-xs font-semibold uppercase text-orange">False Negative (Type II Error)</div>
-              <h4 className="mt-1 font-display text-base font-semibold">Approving a Defaulter</h4>
+              <h4 className="mt-1 font-display text-base font-semibold">Approving a Defaulter (<InlineMath formula="y = 1, \hat{y} = 0" />)</h4>
               <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                The model predicts <InlineMath formula="\hat{y} = 0" /> (safe), but borrower defaults (<InlineMath formula="y = 1" />). The bank loses the unpaid principal, legal fees, and write-off costs—typically <strong>\$10,000 to \$30,000</strong> per loan.
+                The model predicts the loan is safe (<InlineMath formula="\hat{y} = 0" />), but the borrower defaults (<InlineMath formula="y = 1" />). The bank loses unpaid principal and incurs legal workout and recovery costs:
+                <br /><strong className="text-foreground">C_FN = EAD × LGD ≈ $15,000</strong> per defaulted loan.
               </p>
             </div>
 
             <div className="rounded border border-cyan/40 bg-cyan/5 p-5">
               <div className="font-mono text-xs font-semibold uppercase text-cyan">False Positive (Type I Error)</div>
-              <h4 className="mt-1 font-display text-base font-semibold">Rejecting a Good Borrower</h4>
+              <h4 className="mt-1 font-display text-base font-semibold">Rejecting a Good Borrower (<InlineMath formula="y = 0, \hat{y} = 1" />)</h4>
               <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                The model predicts <InlineMath formula="\hat{y} = 1" /> (default risk), but borrower would have repaid (<InlineMath formula="y = 0" />). The bank incurs an opportunity cost of lost interest income—typically <strong>\$800 to \$2,000</strong> over the loan life.
+                The model predicts default (<InlineMath formula="\hat{y} = 1" />), but the borrower would have paid on time (<InlineMath formula="y = 0" />). The bank incurs an opportunity cost of lost interest margin minus customer acquisition costs:
+                <br /><strong className="text-foreground">C_FP = NPV(Interest Profit) ≈ $1,200</strong> per rejected good applicant.
               </p>
             </div>
           </div>
 
           <MathBlock
-            label="Asymmetric Financial Cost Function"
-            formula="\text{Expected Loss} = C_{\text{FN}} \cdot \sum_{i=1}^N \mathbb{I}(y_i = 1, \hat{y}_i = 0) + C_{\text{FP}} \cdot \sum_{i=1}^N \mathbb{I}(y_i = 0, \hat{y}_i = 1)"
+            label="Asymmetric Financial Cost Objective"
+            formula="\text{Portfolio Expected Loss} = C_{\text{FN}} \cdot \sum_{i=1}^N \mathbb{I}(y_i = 1, \hat{y}_i = 0) + C_{\text{FP}} \cdot \sum_{i=1}^N \mathbb{I}(y_i = 0, \hat{y}_i = 1)"
             terms={[
-              ["C_{\\text{FN}}", "Cost of False Negative (e.g. $15,000 lost principal)"],
-              ["C_{\\text{FP}}", "Cost of False Positive (e.g. $1,200 lost interest profit)"],
+              ["C_{\\text{FN}}", "Unit cost of approving a defaulting borrower (e.g. $15,000 principal write-off and collection costs)"],
+              ["C_{\\text{FP}}", "Opportunity cost of turning away a solvent borrower (e.g. $1,200 lost net interest profit)"],
             ]}
-            note="Notice: C_FN / C_FP ≈ 12.5. Missing a single defaulter costs the bank more than turning away twelve good customers!"
+            note="Crucial ratio: C_FN / C_FP ≈ 12.5. Approving a single defaulting borrower destroys the profit earned from more than twelve successfully repaid loans!"
           />
+
+          <WarningCallout title="PD Estimation vs Underwriting Decisioning">
+            Predicting default probability <InlineMath formula="\hat{p}_i" /> is only one component of credit underwriting. A commercial lending system must combine <InlineMath formula="\hat{p}_i" /> with risk-based loan pricing, debt-to-income regulatory caps, liquidity buffer allocations (Common Equity Tier 1 / CET1), and institutional risk appetite before making a final credit decision.
+          </WarningCallout>
         </div>
       </Container>
 
@@ -213,44 +262,84 @@ function CaseStudyPage() {
           id="evaluation-thresholding"
           index="05"
           eyebrow="Optimal Decisions"
-          title="Probability Calibration & Decision Threshold Tuning"
-          description="By default, binary classifiers predict default if p >= 0.50. In credit risk, this default threshold is financially disastrous."
+          title="Decision Threshold Optimization & Cost-Volume Curves"
+          description="By default, binary classifiers predict default if p >= 0.50. In credit risk, this default threshold is financially disastrous. We derive the Bayes-optimal cutoff and reconcile it with production volume constraints."
         />
         <div className="max-w-4xl space-y-6 md:ml-[136px]">
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            Because the cost of approving a defaulter (<InlineMath formula="C_{\text{FN}} = \$15,000" />) is 12.5× higher than turning away a creditworthy applicant (<InlineMath formula="C_{\text{FP}} = \$1,200" />), we tune the decision threshold <InlineMath formula="\theta" /> by minimizing expected monetary cost rather than maximizing raw classification accuracy:
-          </p>
+          <div className="space-y-3 text-sm leading-relaxed text-muted-foreground">
+            <h4 className="font-display text-base font-semibold text-foreground">
+              Mathematical Derivation of the Bayes-Optimal Cutoff
+            </h4>
+            <p>
+              Consider a risk-neutral lender deciding whether to approve (<InlineMath formula="a = 0" />) or decline (<InlineMath formula="a = 1" />) an applicant with estimated default probability <InlineMath formula="p = P(y=1 \mid X)" />. The expected financial loss for each decision is:
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2 font-mono text-xs">
+              <div className="rounded border border-hairline bg-surface p-3">
+                <span className="text-orange font-semibold">Expected Loss if Approved:</span>
+                <p className="mt-1 text-foreground">E[Loss | Approve] = p · C_FN + (1 - p) · 0 = p · C_FN</p>
+              </div>
+              <div className="rounded border border-hairline bg-surface p-3">
+                <span className="text-cyan font-semibold">Expected Loss if Declined:</span>
+                <p className="mt-1 text-foreground">E[Loss | Decline] = p · 0 + (1 - p) · C_FP = (1 - p) · C_FP</p>
+              </div>
+            </div>
+            <p>
+              The rational lender minimizes expected monetary loss by declining the application whenever the expected loss of approval is greater than or equal to the expected loss of rejection:
+            </p>
+          </div>
 
           <MathBlock
-            label="Theoretical Bayes-Optimal Decision Threshold"
-            formula="\theta^* = \frac{C_{\text{FP}}}{C_{\text{FP}} + C_{\text{FN}}} = \frac{1,200}{1,200 + 15,000} = \frac{1,200}{16,200} \approx 0.0741 \quad (7.41\%)"
+            label="Derivation of Optimal Decision Threshold Rule"
+            formula="p \cdot C_{\text{FN}} \ge (1 - p) \cdot C_{\text{FP}} \implies p (C_{\text{FN}} + C_{\text{FP}}) \ge C_{\text{FP}} \implies p \ge \theta^* = \frac{C_{\text{FP}}}{C_{\text{FP}} + C_{\text{FN}}}"
             terms={[
-              ["\\theta^*", "Bayes-optimal default probability cutoff for calibrated probabilities"],
-              ["C_{\\text{FN}}", "Loss from approving a defaulter ($15,000 principal write-off)"],
-              ["C_{\\text{FP}}", "Opportunity cost from rejecting a solvent borrower ($1,200 interest profit)"],
+              ["\\theta^*", "Theoretical Bayes-optimal default cutoff for calibrated probabilities"],
+              ["C_{\\text{FN}}", "Unit loss from approving a borrower who defaults ($15,000 bad debt)"],
+              ["C_{\\text{FP}}", "Opportunity cost of turning away a borrower who would repay ($1,200 lost margin)"],
             ]}
-            note="Under strictly calibrated probabilities, predicting default whenever p >= 7.41% minimizes theoretical portfolio loss. In commercial banking practice, institutions explore the full empirical cost curve to balance write-off reduction against commercial loan volume requirements."
+            note="Substituting C_FP = $1,200 and C_FN = $15,000 yields: θ* = 1,200 / (1,200 + 15,000) = 1,200 / 16,200 ≈ 0.07407 (7.41%)."
           />
 
+          <div className="space-y-3 text-sm leading-relaxed text-muted-foreground">
+            <h4 className="font-display text-base font-semibold text-foreground">
+              Sensitivity to Cost Asymmetry & Key Assumptions
+            </h4>
+            <p>
+              The optimal cutoff is driven entirely by the cost ratio <InlineMath formula="r = C_{\text{FN}} / C_{\text{FP}}" />:
+            </p>
+            <ul className="list-disc pl-5 space-y-1 text-xs">
+              <li><strong>Symmetric Costs (r = 1):</strong> <InlineMath formula="\theta^* = 1 / (1 + 1) = 0.50" /> (the standard default classifier cutoff).</li>
+              <li><strong>Moderate Asymmetry (r = 5):</strong> <InlineMath formula="\theta^* = 1 / (1 + 5) \approx 0.167" /> (16.7%).</li>
+              <li><strong>Severe Asymmetry (r = 12.5, our baseline):</strong> <InlineMath formula="\theta^* = 1 / (1 + 12.5) \approx 0.0741" /> (7.41%).</li>
+              <li><strong>High-Risk Unsecured Subprime (r = 25):</strong> <InlineMath formula="\theta^* = 1 / (1 + 25) \approx 0.0385" /> (3.85%).</li>
+            </ul>
+            <p className="text-xs">
+              <strong>Crucial Theoretical Assumptions:</strong> (1) The default probabilities <InlineMath formula="p" /> are well-calibrated; (2) The loss amounts <InlineMath formula="C_{\text{FN}}" /> and <InlineMath formula="C_{\text{FP}}" /> are constant across borrowers; (3) Binary decisioning (no risk-based tiered interest rate pricing); and (4) Risk-neutral preference.
+            </p>
+          </div>
+
+          <WarningCallout title="Threshold Optimization vs Probability Calibration">
+            Do not confuse a model's <em>probability calibration</em> with its <em>decision threshold</em>. Probability calibration ensures that predicted probabilities reflect empirical ground-truth default rates (e.g., among borrowers predicted at 10%, exactly 10% default). The decision threshold <InlineMath formula="\theta" /> is an executive business policy applied to those calibrated probabilities to minimize financial loss under the bank's specific cost matrix.
+          </WarningCallout>
+
           <WorkedExample
-            title="Threshold Shift Impact on Portfolio Performance (1,000 Applicant Cohort)"
+            title="Threshold Shift Impact on Portfolio Performance (1,000 Applicant Benchmark Cohort)"
             description="Evaluating 1,000 loan applicants with a baseline default prevalence of 14.8% (148 actual defaults, 852 actual non-defaulters)."
             steps={[
               {
                 label: "Operating Point 1: Standard Symmetric Threshold (θ = 0.50)",
-                calculation: "Approved: 880 applicants (120 rejected).\n• False Negatives (missed defaults approved): 52 × $15,000 = $780,000 loss.\n• False Positives (good borrowers rejected): 20 × $1,200 = $24,000 lost profit.\nTotal Portfolio Cost: $780,000 + $24,000 = $804,000. Recall: 64.9% (96/148).",
+                calculation: "Approved: 880 applicants (120 rejected).\n• Confusion Matrix: 96 TP, 20 FP, 832 TN, 52 FN.\n• False Negatives (defaults approved): 52 × $15,000 = $780,000 write-off.\n• False Positives (good borrowers rejected): 20 × $1,200 = $24,000 lost profit.\nTotal Portfolio Loss: $780,000 + $24,000 = $804,000. Recall: 64.9% (96/148).",
                 result: "Net Portfolio Cost: $804,000",
                 explanation: "The default 0.50 cutoff allows 52 defaulting borrowers to receive funding, creating severe bad-debt write-offs because the classifier treats $1,200 errors and $15,000 errors identically.",
               },
               {
                 label: "Operating Point 2: Balanced Production Operating Threshold (θ = 0.18)",
-                calculation: "Approved: 760 applicants (240 rejected).\n• False Negatives: drops from 52 to 18 (130 defaults caught). 18 × $15,000 = $270,000 loss.\n• False Positives: rises to 90 applicants. 90 × $1,200 = $108,000 lost profit.\nTotal Portfolio Cost: $270,000 + $108,000 = $378,000. Recall: 87.8% (130/148).",
+                calculation: "Approved: 760 applicants (240 rejected).\n• Confusion Matrix: 130 TP, 90 FP, 762 TN, 18 FN.\n• False Negatives: drops from 52 to 18 (130 defaults caught). 18 × $15,000 = $270,000.\n• False Positives: rises to 90 applicants. 90 × $1,200 = $108,000 lost profit.\nTotal Portfolio Loss: $270,000 + $108,000 = $378,000. Recall: 87.8% (130/148).",
                 result: "Net Portfolio Cost: $378,000 (Annual Savings: $426,000 / 53.0%)",
                 explanation: "A balanced operating threshold favored by risk committees: it cuts bad-debt write-offs by 65% while maintaining acceptable 76% commercial loan origination volume.",
               },
               {
                 label: "Operating Point 3: Theoretical Bayes-Optimal Cutoff (θ* ≈ 0.074)",
-                calculation: "Approved: 676 applicants (324 rejected).\n• False Negatives: drops to 6 (142 defaults caught). 6 × $15,000 = $90,000 loss.\n• False Positives: rises to 180 applicants. 180 × $1,200 = $216,000 lost profit.\nTotal Portfolio Cost: $90,000 + $216,000 = $306,000. Recall: 95.9% (142/148).",
+                calculation: "Approved: 676 applicants (324 rejected).\n• Confusion Matrix: 142 TP, 180 FP, 672 TN, 6 FN.\n• False Negatives: drops to 6 (142 defaults caught). 6 × $15,000 = $90,000.\n• False Positives: rises to 180 applicants. 180 × $1,200 = $216,000 lost profit.\nTotal Portfolio Loss: $90,000 + $216,000 = $306,000. Recall: 95.9% (142/148).",
                 result: "Net Portfolio Cost: $306,000 (Annual Savings: $498,000 / 61.9%)",
                 explanation: "Achieves the minimum possible expected monetary loss under well-calibrated probabilities. However, rejecting 32.4% of total applicants reduces market share, which is why commercial lenders often select intermediate points like θ = 0.18.",
               },
