@@ -11,7 +11,6 @@ import {
 import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
-import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Logo, NAV_ITEMS, NavigationBar } from "@/components/lab/NavigationBar";
 
 function NotFoundComponent() {
@@ -28,11 +27,8 @@ function NotFoundComponent() {
 }
 
 function ErrorComponent({ error, reset }: ErrorComponentProps) {
-  console.error(error);
+  console.error("Boosting Lab Runtime Error:", error);
   const router = useRouter();
-  useEffect(() => {
-    reportLovableError(error, { boundary: "tanstack_root_error_component" });
-  }, [error]);
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
       <div className="max-w-md text-center">
@@ -52,15 +48,19 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Boosting Lab" },
-      { name: "description", content: "An interactive lab for learning boosting methods in machine learning." },
+      { title: "Boosting Lab — Machine Learning Ensemble Learning Platform" },
+      { name: "description", content: "An interactive educational platform dedicated to understanding Boosting Algorithms in Machine Learning: AdaBoost, Gradient Boosting, XGBoost, LightGBM, and CatBoost." },
       { property: "og:type", content: "website" },
+      { property: "og:title", content: "Boosting Lab — Interactive Machine Learning Platform" },
+      { property: "og:description", content: "Master boosting algorithms from weak learners to strong predictive models through mathematical derivations, Python implementations, and interactive visual experiments." },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "theme-color", content: "#101116" },
     ],
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" },
+      { rel: "stylesheet", href: "https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/katex.min.css" },
       { rel: "stylesheet", href: appCss },
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
     ],
