@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ArrowUpRight, BookOpen, FileText, Code2, Database } from "lucide-react";
-import { Container, PageHero, Pill, SectionHeader, SectionIndex } from "@/components/lab/primitives";
+import { ArrowUpRight, BookOpen, FileText, Code2, Scale } from "lucide-react";
+import { Container, PageHero, Pill, SectionIndex } from "@/components/lab/primitives";
 
 export const Route = createFileRoute("/resources")({
   head: () => ({
@@ -16,6 +16,7 @@ export const Route = createFileRoute("/resources")({
 
 const GROUPS = [
   {
+    id: "papers",
     title: "Foundational Research Papers",
     icon: FileText,
     items: [
@@ -31,8 +32,8 @@ const GROUPS = [
       {
         name: "A Decision-Theoretic Generalization of On-Line Learning (AdaBoost)",
         authors: "Yoav Freund & Robert E. Schapire",
-        year: "1997",
-        venue: "Journal of Computer and System Sciences, 55(1), 119–139",
+        year: "1995 / 1997",
+        venue: "ICML 1995 / Journal of Computer and System Sciences 1997, 55(1), 119–139",
         summary: "Introduced the AdaBoost algorithm, proving exponential training error reduction and non-overfitting margin theory (Gödel Prize winner).",
         href: "https://www.sciencedirect.com/science/article/pii/S002200009791504X",
         tag: "Foundational",
@@ -40,8 +41,8 @@ const GROUPS = [
       {
         name: "Greedy Function Approximation: A Gradient Boosting Machine",
         authors: "Jerome H. Friedman",
-        year: "2001",
-        venue: "Annals of Statistics, 29(5), 1189–1232",
+        year: "1999 / 2001",
+        venue: "Stanford Technical Report 1999 / Annals of Statistics 2001, 29(5), 1189–1232",
         summary: "Formulated boosting as functional gradient descent, unlocking boosting for arbitrary differentiable loss functions.",
         href: "https://projecteuclid.org/journals/annals-of-statistics/volume-29/issue-5/Greedy-function-approximation-A-gradient-boosting-machine/10.1214/aos/1013203451.full",
         tag: "GBM Theory",
@@ -51,7 +52,7 @@ const GROUPS = [
         authors: "Tianqi Chen & Carlos Guestrin",
         year: "2016",
         venue: "KDD '16 Proceedings, 785–794",
-        summary: "Introduced regularized second-order Taylor tree boosting, weighted quantile sketch, and sparsity-aware parallel architecture.",
+        summary: "Introduced regularized second-order Taylor tree boosting, weighted quantile sketch, and sparsity-aware parallel architecture (built upon 2014 DMLC project).",
         href: "https://arxiv.org/abs/1603.02754",
         tag: "Systems & ML",
       },
@@ -66,9 +67,9 @@ const GROUPS = [
       },
       {
         name: "CatBoost: Unbiased Boosting with Categorical Features",
-        authors: "Liudmila Prokhorenkova, Gleb Gusev, Aleksandr Vorobev, et al.",
-        year: "2018",
-        venue: "Advances in Neural Information Processing Systems (NeurIPS 31)",
+        authors: "Liudmila Prokhorenkova, Gleb Gusev, Aleksandr Vorobev, Anna Veronika Dorogush, Andrey Gulin",
+        year: "2017 / 2018",
+        venue: "Dorogush et al. 2017 / Advances in Neural Information Processing Systems (NeurIPS 31, 2018)",
         summary: "Identified prediction shift in standard GBM and introduced Ordered Boosting and target statistics on symmetric trees.",
         href: "https://arxiv.org/abs/1706.09516",
         tag: "Categoricals",
@@ -85,6 +86,7 @@ const GROUPS = [
     ],
   },
   {
+    id: "textbooks",
     title: "Canonical Textbooks",
     icon: BookOpen,
     items: [
@@ -109,6 +111,7 @@ const GROUPS = [
     ],
   },
   {
+    id: "docs",
     title: "Official Documentation & Frameworks",
     icon: Code2,
     items: [
@@ -168,12 +171,47 @@ const GROUPS = [
       },
     ],
   },
+  {
+    id: "governance",
+    title: "Regulatory & Governance Frameworks",
+    icon: Scale,
+    items: [
+      {
+        name: "CFPB Circular 2022-03: Adverse Action Notice Requirements for Complex Algorithms",
+        authors: "Consumer Financial Protection Bureau (CFPB)",
+        year: "2022",
+        venue: "CFPB Policy Circular",
+        summary: "Official guidance establishing that creditors using complex algorithmic or black-box models must provide specific, truthful adverse action reasons under ECOA and Regulation B, and cannot rely on post-hoc explanations that fail to reflect actual decision drivers.",
+        href: "https://www.consumerfinance.gov/compliance/circulars/circular-2022-03-adverse-action-notification-requirements-in-connection-with-credit-decisions-based-on-complex-algorithms/",
+        tag: "Fair Lending",
+      },
+      {
+        name: "Supervisory Guidance on Model Risk Management (SR 11-7 / OCC Bulletin 2011-12)",
+        authors: "Federal Reserve Board & OCC",
+        year: "2011",
+        venue: "Federal Reserve SR Letter 11-7 / OCC 2011-12",
+        summary: "The definitive regulatory standard for model risk management in financial services, establishing three core pillars: development soundness, independent validation, and governance oversight.",
+        href: "https://www.federalreserve.gov/supervisionreg/srletters/sr1107.htm",
+        tag: "Model Risk",
+      },
+      {
+        name: "Equal Credit Opportunity Act (ECOA) & Regulation B (12 CFR Part 1002)",
+        authors: "Consumer Financial Protection Bureau",
+        year: "2011",
+        venue: "12 CFR § 1002.9 / 15 U.S.C. § 1691",
+        summary: "Federal regulation prohibiting credit discrimination and establishing strict procedural requirements for adverse action statements, requiring specific factors for loan denial.",
+        href: "https://www.consumerfinance.gov/rules-policy/regulations/1002/",
+        tag: "ECOA",
+      },
+    ],
+  },
 ];
 
 const SECTIONS = [
   { id: "papers", label: "1. Research Papers" },
   { id: "textbooks", label: "2. Canonical Textbooks" },
   { id: "docs", label: "3. Official Documentation" },
+  { id: "governance", label: "4. Regulatory & Governance" },
 ];
 
 function ResourcesPage() {
@@ -189,11 +227,10 @@ function ResourcesPage() {
 
       <Container className="py-20">
         <div className="space-y-16 md:ml-[136px]">
-          {GROUPS.map((g, idx) => {
+          {GROUPS.map((g) => {
             const Icon = g.icon;
-            const sectionId = idx === 0 ? "papers" : idx === 1 ? "textbooks" : "docs";
             return (
-              <section key={g.title} id={sectionId} className="scroll-mt-28">
+              <section key={g.title} id={g.id} className="scroll-mt-28">
                 <div className="flex items-center gap-2 border-b border-hairline pb-3">
                   <Icon size={18} className="text-violet" />
                   <h3 className="font-display text-xl font-semibold text-foreground">
