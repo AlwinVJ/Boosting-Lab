@@ -360,7 +360,7 @@ function ImplementationPage() {
         <div className="max-w-4xl space-y-8 md:ml-[136px]">
           <div className="grid gap-6 lg:grid-cols-[1.3fr_1fr]">
             <div className="rounded border border-hairline bg-surface p-4">
-              <div className="eyebrow mb-2">Feature Importance (Credit Risk Model)</div>
+              <div className="eyebrow mb-2">Feature Importance (Illustrative Demonstration)</div>
               <FeatureImportanceChart />
             </div>
 
@@ -452,7 +452,7 @@ function ImplementationPage() {
               },
               {
                 id: "q3",
-                question: "What makes SHAP values superior to traditional Gini/Gain feature importance?",
+                question: "Why are SHAP values mathematically preferred over traditional Gini/Gain feature importance for attribution consistency?",
                 options: [
                   "SHAP values satisfy the consistency property (if a model changes so a feature contributes more, its SHAP importance never decreases)",
                   "SHAP values can only be computed for linear models",
@@ -460,7 +460,7 @@ function ImplementationPage() {
                   "Traditional Gain values cannot be plotted on bar charts",
                 ],
                 correctIndex: 0,
-                explanation: "Traditional tree importance metrics are inconsistent: changing a tree structure can increase a feature's true impact while lowering its Gain or Weight score. Shapley values guarantee fair, consistent marginal attribution derived from cooperative game theory.",
+                explanation: "Traditional tree importance metrics (like Gain and Weight) are inconsistent: modifying a model so that a feature has greater impact can paradoxically decrease its measured Gain. Shapley values uniquely satisfy the axiomatic consistency and additivity properties derived from cooperative game theory.",
               },
             ]}
           />
