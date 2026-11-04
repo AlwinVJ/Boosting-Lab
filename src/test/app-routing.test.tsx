@@ -33,3 +33,30 @@ describe("App curriculum routing", () => {
     });
   });
 });
+
+describe("Curriculum & Algorithm Data Integrity", () => {
+  it("contains all 9 academic modules with complete topic coverage", async () => {
+    const { CURRICULUM_MODULES } = await import("@/data/curriculum");
+    expect(CURRICULUM_MODULES).toHaveLength(9);
+    CURRICULUM_MODULES.forEach((m) => {
+      expect(m.title).toBeTruthy();
+      expect(m.to).toBeTruthy();
+      expect(m.topics.length).toBeGreaterThanOrEqual(3);
+    });
+  });
+
+  it("contains all 5 canonical boosting algorithms with verified technical fields", async () => {
+    const { ALGORITHMS } = await import("@/data/content");
+    expect(ALGORITHMS).toHaveLength(5);
+    const expectedKeys = ["adaboost", "gbm", "xgboost", "lightgbm", "catboost"];
+    expect(ALGORITHMS.map((a) => a.key)).toEqual(expectedKeys);
+    ALGORITHMS.forEach((a) => {
+      expect(a.name).toBeTruthy();
+      expect(a.overview).toBeTruthy();
+      expect(a.mechanism).toBeTruthy();
+      expect(a.strengths.length).toBeGreaterThan(0);
+      expect(a.limitations.length).toBeGreaterThan(0);
+      expect(a.applications.length).toBeGreaterThan(0);
+    });
+  });
+});
