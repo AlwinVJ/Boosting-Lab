@@ -387,15 +387,18 @@ features = [
 X = df[features]
 y = df["default"]
 
-# 3. Stratified Split (80% train, 20% held-out test evaluation cohort)
-X_train, X_test, y_train, y_test = train_test_split(
+# 3. Three-Way Stratified Partition (60% Train, 20% Calibration/Validation, 20% Final Test)
+X_train_calib, X_test, y_train_calib, y_test = train_test_split(
     X, y, test_size=0.20, random_state=42, stratify=y
+)
+X_train, X_calib, y_train, y_calib = train_test_split(
+    X_train_calib, y_train_calib, test_size=0.25, random_state=42, stratify=y_train_calib
 )
 
 # 4. Asymmetric class weighting ratio (N_neg / N_pos)
 scale_pos_weight = (len(y_train) - y_train.sum()) / y_train.sum()
 
-# 5. Tree pipeline: XGBoost handles NaNs natively; no feature scaling required
+# 5. Regularized XGBoost classifier (fitted strictly on training cohort)
 xgb_model = xgb.XGBClassifier(
     n_estimators=300,
     learning_rate=0.03,
@@ -532,6 +535,7 @@ xgb_model.fit(X_train, y_train)`}</code>
             <pre className="overflow-x-auto rounded bg-surface-2 p-4 font-mono text-xs text-foreground">
               <code>{`from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.calibration import CalibratedClassifierCV
 import xgboost as xgb
 from sklearn.metrics import roc_auc_score, average_precision_score, brier_score_loss, log_loss
 
@@ -540,22 +544,26 @@ models = {
     "Logistic Regression": LogisticRegression(max_iter=1000, random_state=42),
     "Random Forest": RandomForestClassifier(n_estimators=300, max_depth=6, random_state=42),
     "Gradient Boosting": GradientBoostingClassifier(n_estimators=200, max_depth=3, learning_rate=0.05, random_state=42),
-    "XGBoost": xgb.XGBClassifier(n_estimators=300, max_depth=4, learning_rate=0.03, scale_pos_weight=5.76, random_state=42, eval_metric="logloss")
+    "XGBoost": xgb.XGBClassifier(n_estimators=300, max_depth=4, learning_rate=0.03, scale_pos_weight=7.04, random_state=42, eval_metric="logloss")
 }
 
 results = {}
-# Illustrative demonstration script (demonstrating model evaluation on validation split)
 for name, model in models.items():
+    # 1. Fit raw classifier on training cohort (60%)
     model.fit(X_train, y_train)
-    # Caution: raw predict_proba outputs are NOT automatically calibrated probabilities!
-    # In institutional risk modeling, wrap with CalibratedClassifierCV (Platt or Isotonic)
-    raw_probs = model.predict_proba(X_test)[:, 1]
     
+    # 2. Probability Calibration on dedicated holdout cohort (20% calibration split)
+    # Scikit-Learn 1.6+ uses FrozenEstimator; older versions accept cv='prefit'
+    calibrator = CalibratedClassifierCV(estimator=model, method="sigmoid", cv="prefit")
+    calibrator.fit(X_calib, y_calib)
+    
+    # 3. Evaluate calibrated probabilities on untouched test set (20%)
+    calib_probs = calibrator.predict_proba(X_test)[:, 1]
     results[name] = {
-        "ROC-AUC": roc_auc_score(y_test, raw_probs),
-        "PR-AUC": average_precision_score(y_test, raw_probs),
-        "Brier Score": brier_score_loss(y_test, raw_probs),
-        "Log Loss": log_loss(y_test, raw_probs)
+        "ROC-AUC": roc_auc_score(y_test, calib_probs),
+        "PR-AUC": average_precision_score(y_test, calib_probs),
+        "Brier Score": brier_score_loss(y_test, calib_probs),
+        "Log Loss": log_loss(y_test, calib_probs)
     }`}</code>
             </pre>
           </div>
