@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Container, PageHero, SectionHeader, SectionIndex, Pill } from "@/components/lab/primitives";
+import { Container, PageHero, SectionHeader, SectionIndex, Pill, Tabs } from "@/components/lab/primitives";
 import { MathBlock, InlineMath } from "@/components/lab/MathBlock";
 import { DerivationStep, WorkedExample, KeyTakeaway, WarningCallout } from "@/components/lab/PedagogicalComponents";
 import { QuizBlock } from "@/components/lab/QuizBlock";
@@ -25,6 +26,8 @@ const SECTIONS = [
 ];
 
 function AdaBoostPage() {
+  const [task, setTask] = useState<"classifier" | "regressor">("classifier");
+
   return (
     <>
       <PageHero
@@ -260,47 +263,140 @@ function AdaBoostPage() {
           index="04"
           eyebrow="Hands-On Code"
           title="Python Implementation with Scikit-Learn"
-          description="Train and evaluate AdaBoostClassifier with DecisionTreeClassifier(max_depth=1) as base estimator."
+          description="Complete, reproducible end-to-end workflows for both AdaBoostClassifier and AdaBoostRegressor with decision stumps, weight inspection, and persistence."
         />
         <div className="max-w-4xl space-y-4 md:ml-[136px]">
-          <div className="panel overflow-hidden">
-            <div className="flex items-center justify-between border-b border-hairline bg-surface-2/40 px-4 py-2 font-mono text-xs">
-              <span>adaboost_example.py</span>
-              <span className="text-cyan">Python 3.10+</span>
-            </div>
-            <pre className="overflow-x-auto p-4 font-mono text-xs leading-6 text-foreground">
+          <div className="border border-hairline bg-surface">
+            <Tabs<"classifier" | "regressor">
+              value={task}
+              onChange={setTask}
+              tabs={[
+                { value: "classifier", label: "AdaBoostClassifier (Discrete SAMME)" },
+                { value: "regressor", label: "AdaBoostRegressor (Drucker 1997)" },
+              ]}
+            />
+            <div className="p-5 space-y-4">
+              <div className="flex items-center justify-between font-mono text-xs text-muted-foreground">
+                <span>Script: <strong className="text-foreground">{task === "classifier" ? "adaboost_classifier.py" : "adaboost_regressor.py"}</strong></span>
+                <Pill tone="cyan">Python 3.10+ · Scikit-Learn 1.4+</Pill>
+              </div>
+
+              {task === "classifier" ? (
+                <>
+                  <pre className="overflow-x-auto rounded bg-surface-2 p-4 font-mono text-xs leading-6 text-foreground">
 {`from sklearn.ensemble import AdaBoostClassifier
 from sklearn.tree import DecisionTreeClassifier
+from sklearn.datasets import make_classification
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report, roc_auc_score
-import numpy as np
+from sklearn.metrics import accuracy_score, roc_auc_score, classification_report, confusion_matrix
+import joblib
 
-# 1. Instantiate the weak base learner (decision stump)
-base_estimator = DecisionTreeClassifier(max_depth=1, random_state=42)
-
-# 2. Configure AdaBoost with 100 boosting rounds and learning rate 1.0
-model = AdaBoostClassifier(
-    estimator=base_estimator,
-    n_estimators=100,
-    learning_rate=1.0,
-    algorithm="SAMME",
-    random_state=42
+# 1. Dataset Preparation: Generate synthetic binary dataset
+X, y = make_classification(
+    n_samples=1200, n_features=10, n_informative=6, n_redundant=2,
+    weights=[0.70, 0.30], random_state=42
 )
 
-# 3. Fit on training data
-model.fit(X_train, y_train)
+# 2. Stratified Data Splitting: Preserve 30% class balance across train/test
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.25, random_state=42, stratify=y
+)
 
-# 4. Inspect estimator weights (alpha values)
-print(f"Number of estimators: {len(model.estimators_)}")
-print(f"First 5 estimator weights: {model.estimator_weights_[:5]}")
-print(f"First 5 estimator errors: {model.estimator_errors_[:5]}")
+# 3. Base Weak Learner: Decision stump (max_depth=1)
+# NOTE: 'estimator' replaces deprecated 'base_estimator' in Scikit-Learn 1.4+
+stump = DecisionTreeClassifier(max_depth=1, random_state=42)
 
-# 5. Evaluate
-y_pred = model.predict(X_test)
-y_proba = model.predict_proba(X_test)[:, 1]
-print("ROC-AUC:", roc_auc_score(y_test, y_proba))
-print(classification_report(y_test, y_pred))`}
-            </pre>
+# 4. Model Training: Configure AdaBoost with SAMME discrete algorithm
+clf = AdaBoostClassifier(
+    estimator=stump,
+    n_estimators=100,
+    learning_rate=0.8,
+    algorithm="SAMME",          # 'SAMME' is standard; SAMME.R was removed in 1.6
+    random_state=42
+)
+clf.fit(X_train, y_train)
+
+# 5. Model Inspection: Extract learner contribution weights (alpha_m)
+print(f"Total estimators fitted: {len(clf.estimators_)}")
+print(f"First 5 alpha weights: {clf.estimator_weights_[:5].round(4)}")
+print(f"First 5 weighted errors: {clf.estimator_errors_[:5].round(4)}")
+
+# 6. Evaluation & Inference
+y_pred = clf.predict(X_test)
+y_proba = clf.predict_proba(X_test)[:, 1]
+print(f"Test Accuracy: {accuracy_score(y_test, y_pred):.4f}")
+print(f"Test ROC-AUC:  {roc_auc_score(y_test, y_proba):.4f}")
+print("Confusion Matrix:\\n", confusion_matrix(y_test, y_pred))
+
+# 7. Model Persistence
+joblib.dump(clf, "adaboost_classifier.joblib")
+print("Model saved to adaboost_classifier.joblib")`}
+                  </pre>
+                  <div className="grid gap-3 sm:grid-cols-2 text-xs">
+                    <div className="rounded border border-hairline/60 bg-surface-2/60 p-3 space-y-1">
+                      <span className="font-semibold text-lime">Why 'estimator' &amp; SAMME?</span>
+                      <p className="text-muted-foreground">Scikit-Learn 1.4+ renamed <code className="text-foreground">base_estimator</code> to <code className="text-foreground">estimator</code>. The real-valued <code className="text-foreground">SAMME.R</code> algorithm was deprecated and removed; <code className="text-foreground">algorithm="SAMME"</code> implements the exact discrete Freund &amp; Schapire exponential loss formulation.</p>
+                    </div>
+                    <div className="rounded border border-hairline/60 bg-surface-2/60 p-3 space-y-1">
+                      <span className="font-semibold text-orange">Why Decision Stumps (Depth 1)?</span>
+                      <p className="text-muted-foreground">Boosting requires <em>weak</em> learners with high bias. If you pass an unconstrained tree (<code className="text-foreground">max_depth=None</code>), each tree memorizes the data, producing zero training error (<InlineMath formula="\epsilon_m = 0" />) and rendering subsequent boosting rounds useless.</p>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <pre className="overflow-x-auto rounded bg-surface-2 p-4 font-mono text-xs leading-6 text-foreground">
+{`from sklearn.ensemble import AdaBoostRegressor
+from sklearn.tree import DecisionTreeRegressor
+from sklearn.datasets import make_regression
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_absolute_error, root_mean_squared_error, r2_score
+import joblib
+
+# 1. Dataset Preparation: Continuous regression target
+X, y = make_regression(n_samples=1000, n_features=8, noise=15.0, random_state=42)
+
+# 2. Train-Test Split (75% train, 25% test)
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.25, random_state=42
+)
+
+# 3. Base Weak Learner: Shallow regression tree
+base_tree = DecisionTreeRegressor(max_depth=3, random_state=42)
+
+# 4. AdaBoost.R2 Configuration (Drucker 1997)
+reg = AdaBoostRegressor(
+    estimator=base_tree,
+    n_estimators=100,
+    learning_rate=0.1,
+    loss="linear",              # Options: 'linear', 'square', 'exponential'
+    random_state=42
+)
+reg.fit(X_train, y_train)
+
+# 5. Out-of-Sample Regression Evaluation
+y_pred = reg.predict(X_test)
+print(f"Test MAE:  {mean_absolute_error(y_test, y_pred):.3f}")
+print(f"Test RMSE: {root_mean_squared_error(y_test, y_pred):.3f}")
+print(f"Test R²:   {r2_score(y_test, y_pred):.3f}")
+
+# 6. Model Persistence
+joblib.dump(reg, "adaboost_regressor.joblib")
+print("Model saved to adaboost_regressor.joblib")`}
+                  </pre>
+                  <div className="grid gap-3 sm:grid-cols-2 text-xs">
+                    <div className="rounded border border-hairline/60 bg-surface-2/60 p-3 space-y-1">
+                      <span className="font-semibold text-cyan">AdaBoost.R2 Loss Formulations:</span>
+                      <p className="text-muted-foreground"><code className="text-foreground">loss="linear"</code> weights errors proportionally <InlineMath formula="e_i = |y_i - \hat{y}_i| / D" />. <code className="text-foreground">loss="square"</code> emphasizes larger anomalies, while <code className="text-foreground">loss="exponential"</code> mirrors classification-style margin penalties.</p>
+                    </div>
+                    <div className="rounded border border-hairline/60 bg-surface-2/60 p-3 space-y-1">
+                      <span className="font-semibold text-violet">Standalone Script Reference:</span>
+                      <p className="text-muted-foreground">Run the complete standalone script from your terminal: <code className="text-foreground">python python/01_adaboost_workflow.py</code></p>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </Container>

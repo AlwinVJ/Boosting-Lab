@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Container, PageHero, SectionHeader, SectionIndex, Pill } from "@/components/lab/primitives";
+import { Container, PageHero, SectionHeader, SectionIndex, Pill, Tabs } from "@/components/lab/primitives";
 import { MathBlock, InlineMath } from "@/components/lab/MathBlock";
 import { DerivationStep, WorkedExample, KeyTakeaway, WarningCallout } from "@/components/lab/PedagogicalComponents";
 import { QuizBlock } from "@/components/lab/QuizBlock";
@@ -28,6 +29,8 @@ const SECTIONS = [
 ];
 
 function GradientBoostingPage() {
+  const [task, setTask] = useState<"classifier" | "regressor">("regressor");
+
   return (
     <>
       <PageHero
@@ -378,51 +381,148 @@ function GradientBoostingPage() {
         <SectionHeader
           id="implementation"
           index="06"
-          eyebrow="Code Example"
-          title="Python Implementation: GradientBoostingRegressor"
+          eyebrow="Hands-On Code"
+          title="Python Implementation with Scikit-Learn"
+          description="Complete, reproducible end-to-end workflows for GradientBoostingRegressor and GradientBoostingClassifier with stochastic subsampling, early stopping, and loss objective selection."
         />
         <div className="max-w-4xl space-y-4 md:ml-[136px]">
-          <div className="panel overflow-hidden">
-            <div className="flex items-center justify-between border-b border-hairline bg-surface-2/40 px-4 py-2 font-mono text-xs">
-              <span>gbm_regressor.py</span>
-              <span className="text-cyan">Python 3.10+</span>
-            </div>
-            <pre className="overflow-x-auto p-4 font-mono text-xs leading-6 text-foreground">
-{`from sklearn.ensemble import GradientBoostingRegressor, GradientBoostingClassifier
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import root_mean_squared_error, r2_score
-import numpy as np
+          <div className="border border-hairline bg-surface">
+            <Tabs<"classifier" | "regressor">
+              value={task}
+              onChange={setTask}
+              tabs={[
+                { value: "regressor", label: "GradientBoostingRegressor (MSE & Huber)" },
+                { value: "classifier", label: "GradientBoostingClassifier (Log-Loss & Early Stopping)" },
+              ]}
+            />
+            <div className="p-5 space-y-4">
+              <div className="flex items-center justify-between font-mono text-xs text-muted-foreground">
+                <span>Script: <strong className="text-foreground">{task === "regressor" ? "gbm_regressor.py" : "gbm_classifier.py"}</strong></span>
+                <Pill tone="cyan">Python 3.10+ · Scikit-Learn 1.4+</Pill>
+              </div>
 
-# 1. Instantiate GradientBoostingRegressor with tuned shrinkage and depth
-gbm = GradientBoostingRegressor(
-    loss="squared_error",      # options: 'squared_error', 'absolute_error', 'huber', 'quantile'
-    n_estimators=300,          # number of boosting stages
-    learning_rate=0.05,        # shrinkage parameter ν
-    max_depth=4,               # depth of individual regression trees
-    min_samples_split=10,      # minimum samples required to split internal node
-    subsample=0.8,             # Stochastic Gradient Boosting (sample 80% rows per tree)
+              {task === "regressor" ? (
+                <>
+                  <pre className="overflow-x-auto rounded bg-surface-2 p-4 font-mono text-xs leading-6 text-foreground">
+{`from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.datasets import make_regression
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_absolute_error, root_mean_squared_error, r2_score
+import joblib
+
+# 1. Dataset Preparation: Continuous target with simulated noise
+X, y = make_regression(n_samples=1200, n_features=10, noise=8.0, random_state=42)
+
+# 2. Train-Test Split (75% train, 25% test)
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.25, random_state=42
+)
+
+# 3. Model Configuration: Functional Gradient Descent with Shrinkage
+# loss="squared_error" fits ordinary arithmetic residuals
+# subsample=0.8 fits each tree on 80% random rows (Stochastic Gradient Boosting)
+gbm_reg = GradientBoostingRegressor(
+    loss="squared_error",      # Options: 'squared_error', 'absolute_error', 'huber', 'quantile'
+    n_estimators=300,          # Maximum number of boosting stages
+    learning_rate=0.05,        # Shrinkage factor ν
+    max_depth=4,               # Maximum depth of individual trees
+    min_samples_split=10,      # Minimum samples required to split an internal node
+    subsample=0.8,             # Stochastic GB (samples 80% rows per tree)
     random_state=42
 )
 
-# 2. Fit the ensemble
-gbm.fit(X_train, y_train)
+# 4. Model Fitting & Training Loss Tracking
+gbm_reg.fit(X_train, y_train)
+train_loss = gbm_reg.train_score_
+print(f"Initial loss (round 1): {train_loss[0]:.4f}")
+print(f"Final loss (round 300): {train_loss[-1]:.4f}")
 
-# 3. Track training loss progression across stages
-train_loss = gbm.train_score_
-print(f"Initial loss: {train_loss[0]:.4f}")
-print(f"Final loss at iteration 300: {train_loss[-1]:.4f}")
+# 5. Out-of-Sample Evaluation
+y_pred = gbm_reg.predict(X_test)
+print(f"Test MAE:  {mean_absolute_error(y_test, y_pred):.3f}")
+print(f"Test RMSE: {root_mean_squared_error(y_test, y_pred):.3f}")
+print(f"Test R²:   {r2_score(y_test, y_pred):.3f}")
 
-# 4. Predict and evaluate (using Scikit-Learn 1.4+ root_mean_squared_error)
-y_pred = gbm.predict(X_test)
-rmse = root_mean_squared_error(y_test, y_pred)
-r2 = r2_score(y_test, y_pred)
-print(f"Test RMSE: {rmse:.3f}")
-print(f"Test R² Score: {r2:.3f}")`}
-            </pre>
+# 6. Model Persistence
+joblib.dump(gbm_reg, "gbm_regressor.joblib")
+print("Model saved to gbm_regressor.joblib")`}
+                  </pre>
+                  <div className="grid gap-3 sm:grid-cols-2 text-xs">
+                    <div className="rounded border border-hairline/60 bg-surface-2/60 p-3 space-y-1">
+                      <span className="font-semibold text-lime">Stochastic Gradient Boosting (subsample &lt; 1.0)</span>
+                      <p className="text-muted-foreground">Setting <code className="text-foreground">subsample=0.8</code> samples 80% of training rows without replacement at each iteration. This decorrelates successive regression trees, introduces variance reduction, and speeds up tree induction.</p>
+                    </div>
+                    <div className="rounded border border-hairline/60 bg-surface-2/60 p-3 space-y-1">
+                      <span className="font-semibold text-orange">Loss Choice: MSE vs. Huber</span>
+                      <p className="text-muted-foreground"><code className="text-foreground">squared_error</code> is optimal for Gaussian errors but volatile with outliers. If your dataset contains heavy target anomalies, use <code className="text-foreground">loss="huber"</code>, which switches from quadratic to linear penalties for residuals larger than <InlineMath formula="\alpha" />.</p>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <pre className="overflow-x-auto rounded bg-surface-2 p-4 font-mono text-xs leading-6 text-foreground">
+{`from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.datasets import make_classification
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, roc_auc_score, brier_score_loss, classification_report
+import joblib
+
+# 1. Dataset Preparation: Binary classification
+X, y = make_classification(
+    n_samples=1500, n_features=12, n_informative=8,
+    weights=[0.65, 0.35], random_state=42
+)
+
+# 2. Stratified Data Split
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.20, random_state=42, stratify=y
+)
+
+# 3. Model Configuration: Log-Loss with Built-in Validation Early Stopping
+# loss="log_loss" is the modern parameter replacing deprecated "deviance"
+# n_iter_no_change halts when validation loss plateaus for 20 rounds
+gbm_clf = GradientBoostingClassifier(
+    loss="log_loss",
+    n_estimators=500,
+    learning_rate=0.05,
+    max_depth=3,
+    subsample=0.8,
+    n_iter_no_change=20,        # Early stopping patience
+    validation_fraction=0.15,   # Internal holdout fraction for validation
+    tol=1e-4,
+    random_state=42
+)
+
+# 4. Model Fitting with Automatic Truncation
+gbm_clf.fit(X_train, y_train)
+print(f"Optimal stopping stage: {gbm_clf.n_estimators_} trees (out of 500 max)")
+
+# 5. Out-of-Sample Classification Evaluation
+y_pred = gbm_clf.predict(X_test)
+y_proba = gbm_clf.predict_proba(X_test)[:, 1]
+print(f"Test Accuracy:    {accuracy_score(y_test, y_pred):.4f}")
+print(f"Test ROC-AUC:     {roc_auc_score(y_test, y_proba):.4f}")
+print(f"Test Brier Score: {brier_score_loss(y_test, y_proba):.4f} (lower is better calibrated)")
+print("\\nClassification Report:\\n", classification_report(y_test, y_pred, digits=4))
+
+# 6. Model Persistence
+joblib.dump(gbm_clf, "gbm_classifier.joblib")
+print("Model saved to gbm_classifier.joblib")`}
+                  </pre>
+                  <div className="grid gap-3 sm:grid-cols-2 text-xs">
+                    <div className="rounded border border-hairline/60 bg-surface-2/60 p-3 space-y-1">
+                      <span className="font-semibold text-cyan">Early Stopping in Scikit-Learn:</span>
+                      <p className="text-muted-foreground">Setting <code className="text-foreground">n_iter_no_change=20</code> automatically sets aside <code className="text-foreground">validation_fraction=0.15</code> of the training data. When validation deviance fails to improve for 20 rounds, fitting stops and <code className="text-foreground">n_estimators_</code> is truncated to the best stage.</p>
+                    </div>
+                    <div className="rounded border border-hairline/60 bg-surface-2/60 p-3 space-y-1">
+                      <span className="font-semibold text-violet">Standalone Script Reference:</span>
+                      <p className="text-muted-foreground">Run the complete standalone script from your terminal: <code className="text-foreground">python python/02_gradient_boosting_workflow.py</code></p>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
-          <WarningCallout title="Stochastic Gradient Boosting (subsample < 1.0)">
-            Setting <code className="text-violet">subsample = 0.8</code> introduces row sampling without replacement at each iteration. This reduces variance, mimics bagging, decorrelates successive trees, and speeds up training.
-          </WarningCallout>
         </div>
       </Container>
 
