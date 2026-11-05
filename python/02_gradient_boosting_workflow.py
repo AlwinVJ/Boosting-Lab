@@ -57,13 +57,21 @@ def run_gbm_classifier():
         random_state=42,
     )
 
-    # D. Model Fitting
+    # D. Model Fitting & Early Stopping Mechanics
     print("Training GradientBoostingClassifier with early stopping...")
     gbm_clf.fit(X_train, y_train)
 
-    print(f"Optimal stopping stage: {gbm_clf.n_estimators_} trees (out of 500 max)")
-    print(f"Initial loss: {gbm_clf.train_score_[0]:.4f}")
-    print(f"Final training loss: {gbm_clf.train_score_[-1]:.4f}")
+    # Scikit-Learn Early Stopping Mechanics:
+    # Training evaluates loss on the internal holdout validation set (15% fraction).
+    # When validation loss does not improve for 'n_iter_no_change' (20) consecutive rounds,
+    # training halts at stopping_round = t* + patience.
+    # Scikit-Learn then automatically truncates the model, discarding the 20 deteriorating trees
+    # so that 'gbm_clf.n_estimators_' and 'gbm_clf.estimators_' contain exactly the best stage t*.
+    best_stage = gbm_clf.n_estimators_
+    print(f"Best validation stage (t*): {best_stage} trees (out of 500 max allowed)")
+    print(f"Model truncated to optimal stage: len(estimators_) = {len(gbm_clf.estimators_)}")
+    print(f"Initial training loss: {gbm_clf.train_score_[0]:.4f}")
+    print(f"Training loss at best stage: {gbm_clf.train_score_[best_stage - 1]:.4f}")
 
     # E. Evaluation
     y_pred = gbm_clf.predict(X_test)
