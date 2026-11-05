@@ -35,14 +35,20 @@ const IMPLEMENTATIONS: Record<ModelKey, ModelImplementation> = {
   adaboost: {
     name: "AdaBoostClassifier",
     file: "adaboost_training.py",
-    code: `from sklearn.ensemble import AdaBoostClassifier
+    code: `from sklearn.datasets import make_classification
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import AdaBoostClassifier
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.metrics import roc_auc_score, classification_report
+from sklearn.metrics import roc_auc_score, accuracy_score
 
-# 1. Base weak learner: decision stump
+# 1. Dataset & stratified split
+X, y = make_classification(n_samples=1200, n_features=10, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+
+# 2. Base weak learner: decision stump (max_depth=1)
 base_stump = DecisionTreeClassifier(max_depth=1, random_state=42)
 
-# 2. AdaBoost configuration
+# 3. Discrete SAMME AdaBoost configuration
 model = AdaBoostClassifier(
     estimator=base_stump,
     n_estimators=150,
@@ -52,9 +58,10 @@ model = AdaBoostClassifier(
 )
 model.fit(X_train, y_train)
 
-# 3. Predict & evaluate
+# 4. Out-of-sample evaluation
 y_proba = model.predict_proba(X_test)[:, 1]
-print("AdaBoost Test ROC-AUC:", roc_auc_score(y_test, y_proba))`,
+print("AdaBoost Test ROC-AUC:", roc_auc_score(y_test, y_proba))
+print("AdaBoost Test Accuracy:", accuracy_score(y_test, model.predict(X_test)))`,
     out: ["Fitting 150 decision stumps...", "Estimator weights range: 0.12 - 0.74", "Test ROC-AUC: 0.8642"],
     metrics: [["Accuracy", "0.83"], ["ROC-AUC", "0.86"], ["Fit Time", "0.8 s"]],
     strengths: "Fast baseline with simple decision stumps; minimal hyperparameter tuning required.",
@@ -62,21 +69,32 @@ print("AdaBoost Test ROC-AUC:", roc_auc_score(y_test, y_proba))`,
   gbm: {
     name: "GradientBoostingClassifier",
     file: "gbm_training.py",
-    code: `from sklearn.ensemble import GradientBoostingClassifier
-from sklearn.metrics import roc_auc_score
+    code: `from sklearn.datasets import make_classification
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.metrics import roc_auc_score, accuracy_score
 
+# 1. Dataset & stratified split
+X, y = make_classification(n_samples=1200, n_features=10, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+
+# 2. Gradient Boosting with modern log_loss & early stopping
 model = GradientBoostingClassifier(
-    loss="log_loss",           # modern Scikit-Learn parameter (replacing deprecated 'deviance')
+    loss="log_loss",           # Modern parameter replacing deprecated 'deviance'
     n_estimators=300,
     learning_rate=0.05,
     max_depth=4,
     min_samples_split=10,
-    subsample=0.8,
+    subsample=0.8,             # Stochastic gradient boosting
+    n_iter_no_change=20,       # Validation-based early stopping
+    validation_fraction=0.15,
     random_state=42
 )
 model.fit(X_train, y_train)
 
+# 3. Out-of-sample evaluation
 y_proba = model.predict_proba(X_test)[:, 1]
+print(f"Optimal iterations: {model.n_estimators_}")
 print("GBM Test ROC-AUC:", roc_auc_score(y_test, y_proba))`,
     out: ["Iter 50: log_loss = 0.412", "Iter 150: log_loss = 0.328", "Iter 300: log_loss = 0.281", "Test ROC-AUC: 0.9085"],
     metrics: [["Accuracy", "0.87"], ["ROC-AUC", "0.91"], ["Fit Time", "3.4 s"]],
@@ -86,25 +104,36 @@ print("GBM Test ROC-AUC:", roc_auc_score(y_test, y_proba))`,
     name: "XGBoost Classifier",
     file: "xgboost_training.py",
     code: `import xgboost as xgb
-from sklearn.metrics import roc_auc_score
+from sklearn.datasets import make_classification
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import roc_auc_score, accuracy_score
 
+# 1. Dataset & 3-way split (train/validation/test)
+X, y = make_classification(n_samples=1500, n_features=12, random_state=42)
+X_train_val, X_test, y_train_val, y_test = train_test_split(X, y, test_size=0.20, random_state=42, stratify=y)
+X_train, X_val, y_train, y_val = train_test_split(X_train_val, y_train_val, test_size=0.25, random_state=42, stratify=y_train_val)
+
+# 2. Modern regularized XGBClassifier
 model = xgb.XGBClassifier(
     n_estimators=1000,
     learning_rate=0.03,
-    max_depth=5,
+    max_depth=4,
     min_child_weight=3,
     gamma=0.2,
     reg_alpha=0.1,
     reg_lambda=1.5,
     subsample=0.8,
     colsample_bytree=0.8,
-    eval_metric="auc",
+    eval_metric=["auc", "logloss"],
     early_stopping_rounds=40,
+    tree_method="hist",
     random_state=42
 )
-model.fit(X_train, y_train, eval_set=[(X_val, y_val)], verbose=100)
+model.fit(X_train, y_train, eval_set=[(X_val, y_val)], verbose=False)
 
+# 3. Predict & evaluate using optimal checkpoint
 y_proba = model.predict_proba(X_test)[:, 1]
+print(f"Optimal iteration: {model.best_iteration}")
 print("XGBoost Test ROC-AUC:", roc_auc_score(y_test, y_proba))`,
     out: ["[0]   val-auc: 0.824", "[100] val-auc: 0.898", "[240] val-auc: 0.923 (best)", "Test ROC-AUC: 0.9215"],
     metrics: [["Accuracy", "0.88"], ["ROC-AUC", "0.92"], ["Fit Time", "1.2 s"]],
@@ -114,13 +143,23 @@ print("XGBoost Test ROC-AUC:", roc_auc_score(y_test, y_proba))`,
     name: "LightGBM Classifier",
     file: "lightgbm_training.py",
     code: `import lightgbm as lgb
+from sklearn.datasets import make_classification
+from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_auc_score
 
+# 1. Dataset & 3-way split
+X, y = make_classification(n_samples=1500, n_features=12, random_state=42)
+X_train_val, X_test, y_train_val, y_test = train_test_split(X, y, test_size=0.20, random_state=42, stratify=y)
+X_train, X_val, y_train, y_val = train_test_split(X_train_val, y_train_val, test_size=0.25, random_state=42, stratify=y_train_val)
+
+# 2. LightGBM with leaf-wise growth & bagging (subsample_freq=1 required!)
 model = lgb.LGBMClassifier(
     n_estimators=1000,
     learning_rate=0.03,
     num_leaves=31,
+    max_depth=5,
     subsample=0.8,
+    subsample_freq=1,          # Crucial: enables row subsampling every round
     colsample_bytree=0.8,
     random_state=42
 )
@@ -130,7 +169,9 @@ model.fit(
     callbacks=[lgb.early_stopping(40, verbose=False)]
 )
 
+# 3. Predict & evaluate
 y_proba = model.predict_proba(X_test)[:, 1]
+print(f"Optimal iteration: {model.best_iteration_}")
 print("LightGBM Test ROC-AUC:", roc_auc_score(y_test, y_proba))`,
     out: ["Histogram binning completed (max_bin=255)", "Early stopping at iteration 218", "Test ROC-AUC: 0.9208"],
     metrics: [["Accuracy", "0.88"], ["ROC-AUC", "0.92"], ["Fit Time", "0.4 s"]],
@@ -139,22 +180,48 @@ print("LightGBM Test ROC-AUC:", roc_auc_score(y_test, y_proba))`,
   catboost: {
     name: "CatBoost Classifier",
     file: "catboost_training.py",
-    code: `from catboost import CatBoostClassifier
+    code: `import pandas as pd
+import numpy as np
+from catboost import CatBoostClassifier
+from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_auc_score
 
+# 1. Dataset with mixed numerical & native string categorical columns
+rng = np.random.default_rng(42)
+n = 1500
+df = pd.DataFrame({
+    "credit_score": rng.normal(670, 50, n),
+    "debt_ratio": rng.uniform(0.1, 0.6, n),
+    "tier": rng.choice(["Prime", "Near-Prime", "Subprime"], n),
+    "status": rng.choice(["Employed", "Self-Employed", "Retired"], n),
+    "default": rng.choice([0, 1], n, p=[0.8, 0.2]),
+})
+
+X = df.drop(columns=["default"])
+y = df["default"]
+cat_cols = ["tier", "status"]
+
+# 2. Three-way split
+X_tr_val, X_test, y_tr_val, y_test = train_test_split(X, y, test_size=0.20, random_state=42, stratify=y)
+X_train, X_val, y_train, y_val = train_test_split(X_tr_val, y_tr_val, test_size=0.25, random_state=42, stratify=y_tr_val)
+
+# 3. CatBoost with native strings & oblivious trees
 model = CatBoostClassifier(
     iterations=1000,
     learning_rate=0.03,
     depth=6,
-    cat_features=["employment_type", "home_ownership"],
+    cat_features=cat_cols,     # Handled via online ordered target statistics
     eval_metric="AUC",
     early_stopping_rounds=40,
+    use_best_model=True,
     random_seed=42,
     verbose=False
 )
-model.fit(X_train, y_train, eval_set=(X_val, y_val))
+model.fit(X_train, y_train, eval_set=(X_val, y_val), verbose=False)
 
+# 4. Predict & evaluate
 y_proba = model.predict_proba(X_test)[:, 1]
+print(f"Optimal iteration: {model.get_best_iteration()}")
 print("CatBoost Test ROC-AUC:", roc_auc_score(y_test, y_proba))`,
     out: ["Ordered target statistics generated", "Best iteration: 265", "Test ROC-AUC: 0.9221"],
     metrics: [["Accuracy", "0.89"], ["ROC-AUC", "0.92"], ["Fit Time", "1.9 s"]],

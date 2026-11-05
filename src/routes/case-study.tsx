@@ -341,49 +341,72 @@ function CaseStudyPage() {
           </WarningCallout>
 
           <div className="space-y-2">
-            <h5 className="font-display text-xs font-semibold uppercase text-muted-foreground">
-              Reproducible Python Pipeline (Leak-Proof Assembly)
-            </h5>
+            <div className="flex items-center justify-between">
+              <h5 className="font-display text-xs font-semibold uppercase text-muted-foreground">
+                Reproducible Python Pipeline (Leak-Proof Assembly)
+              </h5>
+              <span className="font-mono text-xs text-cyan">
+                Reference: python/07_credit_risk_case_study.py
+              </span>
+            </div>
             <pre className="overflow-x-auto rounded bg-surface-2 p-4 font-mono text-xs text-foreground">
-              <code>{`import numpy as np
+              <code>{`import os
+import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from sklearn.compose import ColumnTransformer
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler
-from sklearn.impute import SimpleImputer
 import xgboost as xgb
 
-# 1. Load dataset (synthetic illustrative benchmark)
-df = pd.read_csv("synthetic_loan_portfolio.csv")
+# 1. Load dataset (with synthetic benchmark generator fallback)
+if os.path.exists("synthetic_loan_portfolio.csv"):
+    df = pd.read_csv("synthetic_loan_portfolio.csv")
+else:
+    # 5,000-sample benchmark calibrated to 14.8% default prevalence
+    rng = np.random.default_rng(42)
+    n = 5000
+    df = pd.DataFrame({
+        "credit_score": rng.normal(675, 65, n).clip(350, 850).round(),
+        "annual_income": np.exp(rng.normal(11.0, 0.45, n)).clip(18000, 250000).round(),
+        "dti": rng.uniform(0.05, 0.68, n).round(2),
+        "loan_amount": (np.exp(rng.normal(11.0, 0.45, n)) * rng.uniform(0.15, 0.45, n)).round(-2),
+        "emp_length": rng.integers(0, 26, n),
+        "late_payments": rng.choice([0, 1, 2, 3, 4], size=n, p=[0.70, 0.15, 0.08, 0.05, 0.02]),
+    })
+    z = (df["credit_score"] - 675) / 65
+    logit = -2.85 - 0.95 * z + 2.80 * (df["dti"] - 0.32) + 0.55 * df["late_payments"]
+    df["default"] = (rng.random(n) < 1 / (1 + np.exp(-logit))).astype(int)
 
 # 2. Engineer domain solvency ratios
 df["loan_to_income"] = df["loan_amount"] / df["annual_income"]
 df["dti_adjusted"] = df["dti"] + (df["loan_amount"] * 0.03) / (df["annual_income"] / 12)
 df["payment_risk_index"] = df["late_payments"] * df["dti"] / np.log(df["annual_income"])
 
-X = df.drop(columns=["id", "default"])
+features = [
+    "credit_score", "annual_income", "dti", "loan_amount",
+    "emp_length", "late_payments", "loan_to_income", "dti_adjusted", "payment_risk_index"
+]
+X = df[features]
 y = df["default"]
 
-# 3. Stratified Split (80% train, 20% out-of-sample test)
+# 3. Stratified Split (80% train, 20% held-out test evaluation cohort)
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.20, random_state=42, stratify=y
 )
 
-# 4. Asymmetric class weighting ratio
-scale_pos_weight = (len(y_train) - y_train.sum()) / y_train.sum()  # ~5.76
+# 4. Asymmetric class weighting ratio (N_neg / N_pos)
+scale_pos_weight = (len(y_train) - y_train.sum()) / y_train.sum()
 
 # 5. Tree pipeline: XGBoost handles NaNs natively; no feature scaling required
 xgb_model = xgb.XGBClassifier(
     n_estimators=300,
-    max_depth=4,
     learning_rate=0.03,
+    max_depth=4,
+    min_child_weight=3,
     subsample=0.8,
     colsample_bytree=0.8,
     scale_pos_weight=scale_pos_weight,
     eval_metric="logloss",
+    tree_method="hist",
     random_state=42,
-    tree_method="hist"
 )
 
 # 6. Fit strictly on training set
@@ -639,6 +662,53 @@ for name, model in models.items():
             ]}
             conclusion="Machine learning predictions only translate into business value when coupled with cost-aware decision thresholding calibrated to financial loss matrices."
           />
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h5 className="font-display text-xs font-semibold uppercase text-muted-foreground">
+                Reproducible Python: Empirical Cost-Sensitive Threshold Curve Optimization
+              </h5>
+              <span className="font-mono text-xs text-cyan">
+                C_FN = $15,000 · C_FP = $1,200
+              </span>
+            </div>
+            <pre className="overflow-x-auto rounded bg-surface-2 p-4 font-mono text-xs text-foreground">
+              <code>{`import numpy as np
+from sklearn.metrics import confusion_matrix
+
+# 1. Asymmetric Financial Loss Matrix Parameters
+C_FN = 15000  # Cost of granting loan to defaulter (bad debt write-off)
+C_FP = 1200   # Lost net interest margin from rejecting a prime borrower
+
+# Theoretical Bayes-optimal cutoff: theta* = C_FP / (C_FN + C_FP)
+bayes_optimal_theta = C_FP / (C_FN + C_FP)  # ~0.07407 (7.41%)
+
+# 2. Evaluate empirical cost curve across operating thresholds
+thresholds_to_evaluate = [
+    ("Baseline Symmetric (θ = 0.50)", 0.50),
+    ("Balanced Target (θ = 0.18)", 0.18),
+    ("Bayes-Optimal (θ* ≈ 0.074)", bayes_optimal_theta),
+]
+
+y_proba_test = xgb_model.predict_proba(X_test)[:, 1]
+
+for label, theta in thresholds_to_evaluate:
+    y_pred = (y_proba_test >= theta).astype(int)
+    tn, fp, fn, tp = confusion_matrix(y_test, y_pred).ravel()
+
+    approved = tn + fn
+    rejected = tp + fp
+    expected_cost = fn * C_FN + fp * C_FP
+    recall = tp / (tp + fn) if (tp + fn) > 0 else 0
+    precision = tp / (tp + fp) if (tp + fp) > 0 else 0
+
+    print(f"--- {label} ---")
+    print(f"  Approval Rate: {approved}/{len(y_test)} ({approved/len(y_test):.1%})")
+    print(f"  Confusion Matrix: TP={tp}, FP={fp}, TN={tn}, FN={fn}")
+    print(f"  Recall (Defaults Caught): {recall:.1%}")
+    print(f"  Total Portfolio Loss: \${expected_cost:,}\\n")`}</code>
+            </pre>
+          </div>
         </div>
       </Container>
 
@@ -760,30 +830,45 @@ for name, model in models.items():
           </WarningCallout>
 
           <div className="space-y-2">
-            <h5 className="font-display text-xs font-semibold uppercase text-muted-foreground">
-              Reproducible Python Implementation (TreeSHAP Explanation Extraction)
-            </h5>
+            <div className="flex items-center justify-between">
+              <h5 className="font-display text-xs font-semibold uppercase text-muted-foreground">
+                Reproducible Python: TreeSHAP Attribution & Adverse Action Extraction
+              </h5>
+              <span className="font-mono text-xs text-cyan">
+                shap &gt;= 0.44.0 · joblib &gt;= 1.3.0
+              </span>
+            </div>
             <pre className="overflow-x-auto rounded bg-surface-2 p-4 font-mono text-xs text-foreground">
-              <code>{`import shap
+              <code>{`import numpy as np
+import shap
+import joblib
 
-# 1. Instantiate TreeExplainer for the trained XGBoost model
+# 1. Instantiate TreeExplainer for the trained XGBoost credit model
 explainer = shap.TreeExplainer(xgb_model)
 
-# 2. Compute exact Shapley values in log-odds space
+# 2. Compute exact Shapley values in log-odds margin space
 shap_values = explainer(X_test)
+print(f"Base expected margin E[F(X)]: {explainer.expected_value:.3f}")
 
-# 3. Inspect global feature attribution (mean absolute SHAP values)
-global_importance = np.abs(shap_values.values).mean(axis=0)
+# 3. Extract Top Adverse Action Denial Reasons for Declined Applicants (ECOA / Reg B)
+# Identify an applicant declined under the theta = 0.18 operational threshold
+y_proba_test = xgb_model.predict_proba(X_test)[:, 1]
+declined_indices = np.where(y_proba_test >= 0.18)[0]
+applicant_idx = declined_indices[0]
 
-# 4. Generate local waterfall attribution for an individual declined applicant
-applicant_idx = 42
-applicant_shap = shap_values[applicant_idx]
+feature_names = X_test.columns
+contributions = shap_values.values[applicant_idx]
 
-# Expected base margin: E[F(X)]
-print(f"Base margin: {explainer.expected_value:.3f}")
-# Individual feature attributions: phi_j
-for feat_name, val in zip(X.columns, applicant_shap.values):
-    print(f"{feat_name:20s}: {val:+.3f} log-odds")`}</code>
+# Sort features by highest positive log-odds risk contribution
+adverse_reasons = sorted(zip(feature_names, contributions), key=lambda x: x[1], reverse=True)[:4]
+
+print(f"\\nTop 4 Adverse Action Denial Reasons for Applicant #{applicant_idx}:")
+for rank, (feat, impact) in enumerate(adverse_reasons, 1):
+    print(f"  {rank}. {feat:25s} (+{impact:.3f} log-odds default risk)")
+
+# 4. Production Model Serialization
+joblib.dump(xgb_model, "credit_risk_xgboost.joblib")
+print("\\nTrained XGBoost model persisted to credit_risk_xgboost.joblib")`}</code>
             </pre>
           </div>
         </div>
