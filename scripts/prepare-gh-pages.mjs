@@ -48,14 +48,19 @@ const expectedRoutes = [
 ];
 
 let allRoutesPresent = true;
+const missingRoutes = [];
 for (const route of expectedRoutes) {
   const routeHtml = resolve(publicDir, route, "index.html");
   if (!existsSync(routeHtml)) {
-    console.warn(`Warning: Route index missing for /${route} at ${routeHtml}`);
+    console.error(`Error: Prerendered route index missing for /${route} at ${routeHtml}`);
+    missingRoutes.push(route);
     allRoutesPresent = false;
   }
 }
 
-if (allRoutesPresent) {
-  console.log(`Verified all ${expectedRoutes.length} nested route index.html files exist in ${publicDir}.`);
+if (!allRoutesPresent) {
+  console.error(`Build Failed: Missing ${missingRoutes.length} route index files: ${missingRoutes.join(", ")}`);
+  process.exit(1);
 }
+
+console.log(`Verified all ${expectedRoutes.length} nested route index.html files exist in ${publicDir}.`);

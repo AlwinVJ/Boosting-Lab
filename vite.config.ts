@@ -2,7 +2,6 @@ import { defineConfig } from "vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
-import tsconfigPaths from "vite-tsconfig-paths";
 
 const basePath =
   process.env["BASE_PATH"] ||
@@ -12,31 +11,43 @@ const basePath =
       ? "/Boosting-Lab/"
       : "/");
 
+const routes = [
+  "",
+  "fundamentals",
+  "adaboost",
+  "gradient-boosting",
+  "xgboost",
+  "algorithms",
+  "implementation",
+  "hyperparameters",
+  "advanced",
+  "case-study",
+  "resources",
+];
+
+const prerenderPages = routes.map((r) => ({
+  path: `${basePath.replace(/\/$/, "")}/${r}`.replace(/^\/\//, "/"),
+}));
+
 export default defineConfig({
   base: basePath,
+  resolve: {
+    tsconfigPaths: true,
+  },
   plugins: [
     tanstackStart({
       server: { entry: "server" },
+      router: {
+        basepath: basePath,
+      },
       prerender: {
         enabled: true,
-        crawlLinks: true,
+        crawlLinks: false,
+        autoStaticPathsDiscovery: false,
       },
-      pages: [
-        { path: "/" },
-        { path: "/fundamentals" },
-        { path: "/adaboost" },
-        { path: "/gradient-boosting" },
-        { path: "/xgboost" },
-        { path: "/algorithms" },
-        { path: "/implementation" },
-        { path: "/hyperparameters" },
-        { path: "/advanced" },
-        { path: "/case-study" },
-        { path: "/resources" },
-      ],
+      pages: prerenderPages,
     }),
     viteReact(),
     tailwindcss(),
-    tsconfigPaths(),
   ],
 });
