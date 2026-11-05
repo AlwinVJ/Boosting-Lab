@@ -55,13 +55,14 @@ def run_adaboost_classification():
     # Decision stump (tree of depth 1) is the canonical weak learner
     stump = DecisionTreeClassifier(max_depth=1, random_state=42)
 
-    # In Scikit-Learn 1.4+, 'estimator' replaces deprecated 'base_estimator'
-    # 'algorithm="SAMME"' is the standard discrete boosting formulation
+    # In Scikit-Learn 1.4+, 'estimator' replaces deprecated 'base_estimator'.
+    # Note on 'algorithm': Scikit-Learn 1.4 deprecated 'SAMME.R' and Scikit-Learn 1.6
+    # removed the 'algorithm' parameter entirely, standardizing strictly on discrete SAMME.
+    # Leaving 'algorithm' unspecified defaults to SAMME with 100% backward/forward compatibility.
     adaboost_clf = AdaBoostClassifier(
         estimator=stump,
         n_estimators=100,
         learning_rate=0.8,
-        algorithm="SAMME",
         random_state=42,
     )
 
@@ -152,4 +153,5 @@ def run_adaboost_regression():
 
 if __name__ == "__main__":
     run_adaboost_classification()
+    run_adaboost_regression()
     run_adaboost_regression()

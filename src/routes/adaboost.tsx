@@ -214,7 +214,7 @@ function AdaBoostPage() {
               note="Notice: when K = 2, ln(K - 1) = ln(1) = 0, reducing exactly to binary AdaBoost up to a scale factor of 1/2. For any K, α_m > 0 as long as accuracy > 1/K (better than random guessing)."
             />
             <WarningCallout title="Scikit-Learn API Modernization Notice">
-              Scikit-Learn originally offered two multiclass AdaBoost algorithms: <code className="text-violet">SAMME</code> (discrete predictions) and <code className="text-violet">SAMME.R</code> (real-valued class probability estimates). <code className="text-violet">SAMME.R</code> was <strong>deprecated in Scikit-Learn 1.4</strong> and <strong>removed in Scikit-Learn 1.6</strong>. Always configure <code className="text-cyan">algorithm="SAMME"</code> explicitly in modern Python code.
+              Scikit-Learn originally offered two multiclass AdaBoost algorithms: <code className="text-violet">SAMME</code> (discrete predictions) and <code className="text-violet">SAMME.R</code> (real-valued class probability estimates). <code className="text-violet">SAMME.R</code> was <strong>deprecated in Scikit-Learn 1.4</strong> and <strong>removed in Scikit-Learn 1.6</strong>, which also removed the <code className="text-violet">algorithm</code> parameter entirely, standardizing strictly on discrete SAMME. In modern Python code, omit the <code className="text-cyan">algorithm</code> argument to maintain full backward and forward compatibility.
             </WarningCallout>
           </div>
         </div>
@@ -306,12 +306,13 @@ X_train, X_test, y_train, y_test = train_test_split(
 # NOTE: 'estimator' replaces deprecated 'base_estimator' in Scikit-Learn 1.4+
 stump = DecisionTreeClassifier(max_depth=1, random_state=42)
 
-# 4. Model Training: Configure AdaBoost with SAMME discrete algorithm
+# 4. Model Training: Configure AdaBoost with decision stumps
+# NOTE: 'estimator' replaces 'base_estimator' (1.4+). In Scikit-Learn 1.6+,
+# the 'algorithm' parameter was removed, standardizing exclusively on discrete SAMME.
 clf = AdaBoostClassifier(
     estimator=stump,
     n_estimators=100,
     learning_rate=0.8,
-    algorithm="SAMME",          # 'SAMME' is standard; SAMME.R was removed in 1.6
     random_state=42
 )
 clf.fit(X_train, y_train)
@@ -335,7 +336,7 @@ print("Model saved to adaboost_classifier.joblib")`}
                   <div className="grid gap-3 sm:grid-cols-2 text-xs">
                     <div className="rounded border border-hairline/60 bg-surface-2/60 p-3 space-y-1">
                       <span className="font-semibold text-lime">Why 'estimator' &amp; SAMME?</span>
-                      <p className="text-muted-foreground">Scikit-Learn 1.4+ renamed <code className="text-foreground">base_estimator</code> to <code className="text-foreground">estimator</code>. The real-valued <code className="text-foreground">SAMME.R</code> algorithm was deprecated and removed; <code className="text-foreground">algorithm="SAMME"</code> implements the exact discrete Freund &amp; Schapire exponential loss formulation.</p>
+                      <p className="text-muted-foreground">Scikit-Learn 1.4+ renamed <code className="text-foreground">base_estimator</code> to <code className="text-foreground">estimator</code>. The real-valued <code className="text-foreground">SAMME.R</code> algorithm was deprecated and removed in 1.6 along with the <code className="text-foreground">algorithm</code> parameter; <code className="text-foreground">AdaBoostClassifier</code> now implements the exact discrete Freund &amp; Schapire exponential loss formulation by default.</p>
                     </div>
                     <div className="rounded border border-hairline/60 bg-surface-2/60 p-3 space-y-1">
                       <span className="font-semibold text-orange">Why Decision Stumps (Depth 1)?</span>
