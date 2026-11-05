@@ -150,16 +150,55 @@ npx tsc --noEmit
 npm run test
 ```
 
-### 6. Build for Production
+### 6. Build for Production & Static Prerendering
 ```bash
 npm run build
 ```
-The production bundle is generated in `.output/` with clean static client assets and standalone server entry.
+This runs `vite build` followed by `node scripts/prepare-gh-pages.mjs`. It compiles the client and SSR bundles, executes TanStack Start's prerender engine across all 11 curriculum routes, copies `index.html` to `404.html` for client-side routing fallback, and creates `.nojekyll` to prevent GitHub Pages from bypassing underscore-prefixed asset directories.
+
+The static deployment artifact is stored in `.output/public/`.
 
 To preview the production build locally:
 ```bash
 npm run preview
 ```
+
+---
+
+## Deploying to GitHub Pages
+
+Boosting Lab is configured for seamless static hosting on **GitHub Pages** using GitHub Actions with a manual trigger (`workflow_dispatch`).
+
+### 1. One-Time GitHub Repository Configuration
+1. Open your repository on GitHub: `https://github.com/alwinvj/boosting-lab`.
+2. Navigate to **Settings** (top navigation tab) → **Pages** (in the left sidebar under *Code and automation*).
+3. Under **Build and deployment** → **Source**, change the dropdown from *Deploy from a branch* to **GitHub Actions**.
+4. (No branch or folder selection is needed when using GitHub Actions).
+
+### 2. Triggering the Deployment Workflow
+Deployments are configured with a manual trigger so you have full control over when releases go live:
+1. In your repository, click the **Actions** tab.
+2. In the left workflow list, click **Deploy to GitHub Pages**.
+3. Click the **Run workflow** button on the right side.
+4. Ensure the `main` branch is selected, then click the green **Run workflow** button.
+5. The workflow will execute:
+   * **build**: Checks out code, sets up Node.js 22, installs dependencies (`npm ci`), runs TypeScript check (`npx tsc --noEmit`), runs unit tests (`npm test`), builds static prerendered HTML with `BASE_PATH: /Boosting-Lab/`, and uploads the `.output/public` artifact.
+   * **deploy**: Publishes the artifact to GitHub Pages with OpenID Connect (OIDC) token authentication.
+
+### 3. Verifying Your Deployment
+Once the deployment job completes, your live site will be accessible at:
+```
+https://alwinvj.github.io/Boosting-Lab/
+```
+Verify that:
+* The website loads with dark theme styling, KaTeX formulas, and images.
+* Navigation links smoothly transition between all 11 modules (`/fundamentals`, `/adaboost`, `/gradient-boosting`, `/xgboost`, `/algorithms`, `/implementation`, `/hyperparameters`, `/advanced`, `/case-study`, `/resources`).
+* Refreshing any subpage (e.g. `/case-study`) directly in the browser reloads correctly without 404 errors.
+
+### 4. Deploying Subsequent Updates
+Whenever you make further improvements to the codebase:
+1. Commit your changes to the `main` branch.
+2. Go to the **Actions** tab → **Deploy to GitHub Pages** → **Run workflow** to publish the new version.
 
 ---
 
