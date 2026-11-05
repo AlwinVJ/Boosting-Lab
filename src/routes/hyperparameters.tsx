@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { ChevronDown, Sliders, Sparkles } from "lucide-react";
-import { Container, PageHero, Pill, SectionHeader, SectionIndex, ChartContainer } from "@/components/lab/primitives";
+import { Container, PageHero, Pill, SectionHeader, SectionIndex, ChartContainer, Tabs } from "@/components/lab/primitives";
+import { InlineMath } from "@/components/lab/MathBlock";
 import { LearningRateChart, OverfittingChart } from "@/components/lab/charts";
 import { KeyTakeaway, WarningCallout } from "@/components/lab/PedagogicalComponents";
 import { QuizBlock } from "@/components/lab/QuizBlock";
@@ -145,6 +146,7 @@ const SECTIONS = [
 function HyperparametersPage() {
   const [filter, setFilter] = useState<string>("All");
   const [openParam, setOpenParam] = useState<string | null>("learning_rate (η / ν)");
+  const [tuningTab, setTuningTab] = useState("grid");
 
   const filteredParams = ALL_PARAMS.filter(
     (p) => filter === "All" || p.algo === filter || p.algo === "Both" || p.algo === "All"
@@ -324,65 +326,260 @@ function HyperparametersPage() {
         <SectionHeader
           id="optuna-code"
           index="05"
-          eyebrow="Production Python"
-          title="Bayesian Optimization with Optuna"
-          description="Complete, reproducible Python script optimizing an XGBoost model using Optuna."
+          eyebrow="Hands-On Python"
+          title="Practical Hyperparameter Tuning Progression"
+          description="Complete, leak-proof Python implementations progressing from baseline GridSearchCV through RandomizedSearchCV to advanced Bayesian Optimization with Optuna."
         />
-        <div className="max-w-4xl space-y-4 md:ml-[136px]">
-          <div className="panel overflow-hidden">
-            <div className="flex items-center justify-between border-b border-hairline bg-surface-2/40 px-4 py-2 font-mono text-xs">
-              <span>optuna_xgboost_tuning.py</span>
-              <span className="text-cyan">Python 3.10+</span>
+        <div className="max-w-4xl space-y-6 md:ml-[136px]">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <Tabs
+              tabs={[
+                { value: "grid", label: "1. Leak-Proof Pipeline + GridSearchCV" },
+                { value: "random", label: "2. RandomizedSearchCV (Continuous)" },
+                { value: "optuna", label: "3. Bayesian Optuna Study" },
+              ]}
+              value={tuningTab}
+              onChange={setTuningTab}
+            />
+            <span className="text-xs font-mono text-muted-foreground">
+              Reference: <code className="text-cyan">python python/05_hyperparameter_tuning_workflow.py</code>
+            </span>
+          </div>
+
+          {tuningTab === "grid" && (
+            <div className="space-y-4">
+              <div className="panel overflow-hidden">
+                <div className="flex items-center justify-between border-b border-hairline bg-surface-2/40 px-4 py-2 font-mono text-xs">
+                  <span>pipeline_gridsearch_cv.py</span>
+                  <span className="text-cyan">Scikit-Learn 1.4+</span>
+                </div>
+                <pre className="overflow-x-auto p-4 font-mono text-xs leading-6 text-foreground">
+{`import numpy as np
+from sklearn.datasets import make_classification
+from sklearn.model_selection import train_test_split, StratifiedKFold, GridSearchCV
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.metrics import roc_auc_score
+
+# 1. Synthesize binary classification dataset
+X, y = make_classification(
+    n_samples=1500,
+    n_features=12,
+    n_informative=8,
+    weights=[0.75, 0.25],
+    random_state=42,
+)
+
+# Held-out test split for final unbiased evaluation
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.20, random_state=42, stratify=y
+)
+
+# 2. Build Leak-Proof Pipeline
+# CRITICAL: Wrapping preprocessors inside Pipeline guarantees they are fit
+# strictly on the training folds inside each cross-validation split!
+pipeline = Pipeline([
+    ("scaler", StandardScaler()),
+    ("gbm", GradientBoostingClassifier(random_state=42)),
+])
+
+# 3. Define discrete hyperparameter grid using 'estimator__param' syntax
+param_grid = {
+    "gbm__n_estimators": [100, 200],
+    "gbm__learning_rate": [0.03, 0.1],
+    "gbm__max_depth": [3, 4],
+    "gbm__subsample": [0.8, 1.0],
+}
+
+cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+
+# 4. Exhaustive Grid Search
+grid_search = GridSearchCV(
+    estimator=pipeline,
+    param_grid=param_grid,
+    scoring="roc_auc",
+    cv=cv,
+    n_jobs=-1,
+    verbose=0,
+)
+grid_search.fit(X_train, y_train)
+
+print(f"Best 5-Fold CV ROC-AUC: {grid_search.best_score_:.4f}")
+print("Best Parameters:", grid_search.best_params_)
+
+# 5. Out-of-Sample Test Evaluation
+test_auc = roc_auc_score(y_test, grid_search.predict_proba(X_test)[:, 1])
+print(f"Final Test ROC-AUC:    {test_auc:.4f}")`}
+                </pre>
+              </div>
+
+              <div className="panel p-4 space-y-2 border-hairline/80 text-xs">
+                <div className="font-semibold text-orange">Why the Pipeline Wrapper is Mathematically Mandatory</div>
+                <p className="text-muted-foreground leading-relaxed">
+                  If you scale features or compute categorical target statistics across the entire dataset before calling <code className="text-foreground">GridSearchCV</code>, your validation folds leak test statistics into the training process, causing artificially optimistic CV scores. The Scikit-Learn <code className="text-cyan">Pipeline</code> ensures that <code className="text-foreground">fit_transform()</code> runs exclusively on the <InlineMath formula="K-1" /> training folds and <code className="text-foreground">transform()</code> is applied to the held-out validation fold.
+                </p>
+              </div>
             </div>
-            <pre className="overflow-x-auto p-4 font-mono text-xs leading-6 text-foreground">
+          )}
+
+          {tuningTab === "random" && (
+            <div className="space-y-4">
+              <div className="panel overflow-hidden">
+                <div className="flex items-center justify-between border-b border-hairline bg-surface-2/40 px-4 py-2 font-mono text-xs">
+                  <span>pipeline_randomsearch_cv.py</span>
+                  <span className="text-cyan">Scikit-Learn 1.4+ · SciPy</span>
+                </div>
+                <pre className="overflow-x-auto p-4 font-mono text-xs leading-6 text-foreground">
+{`from scipy.stats import uniform, randint
+from sklearn.datasets import make_classification
+from sklearn.model_selection import train_test_split, StratifiedKFold, RandomizedSearchCV
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.metrics import roc_auc_score
+
+# 1. Synthesize classification dataset
+X, y = make_classification(n_samples=1500, n_features=12, weights=[0.75, 0.25], random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.20, random_state=42, stratify=y)
+
+pipeline = Pipeline([
+    ("scaler", StandardScaler()),
+    ("gbm", GradientBoostingClassifier(random_state=42)),
+])
+
+# 2. Define Continuous and Discrete Probability Distributions
+# Rather than fixed grid points, sample smoothly across continuous intervals
+param_distributions = {
+    "gbm__n_estimators": randint(80, 250),        # Discrete uniform [80, 250)
+    "gbm__learning_rate": uniform(0.01, 0.15),     # Continuous uniform [0.01, 0.16]
+    "gbm__max_depth": randint(3, 6),              # Tree depths: 3, 4, 5
+    "gbm__subsample": uniform(0.65, 0.35),         # Continuous fraction [0.65, 1.00]
+}
+
+cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+
+# 3. Randomized Search across 25 parameter configurations
+random_search = RandomizedSearchCV(
+    estimator=pipeline,
+    param_distributions=param_distributions,
+    n_iter=25,
+    scoring="roc_auc",
+    cv=cv,
+    random_state=42,
+    n_jobs=-1,
+    verbose=0,
+)
+random_search.fit(X_train, y_train)
+
+print(f"Best CV ROC-AUC: {random_search.best_score_:.4f}")
+print("Optimal Configuration:", random_search.best_params_)
+
+test_auc = roc_auc_score(y_test, random_search.predict_proba(X_test)[:, 1])
+print(f"Test ROC-AUC:    {test_auc:.4f}")`}
+                </pre>
+              </div>
+
+              <div className="panel p-4 space-y-2 border-hairline/80 text-xs">
+                <div className="font-semibold text-cyan">The Bergstra & Bengio (2012) Advantage</div>
+                <p className="text-muted-foreground leading-relaxed">
+                  In gradient boosting, parameters have vastly unequal effective dimensionality: <code className="text-foreground">learning_rate</code> and <code className="text-foreground">max_depth</code> impact loss far more than minor subsampling tweaks. In a 3×3 grid of 9 evaluations, only 3 distinct learning rates are ever tested. Randomized search with 9 iterations tests 9 distinct learning rates, providing triple the coverage on the most influential dimension for the exact same compute budget.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {tuningTab === "optuna" && (
+            <div className="space-y-4">
+              <div className="panel overflow-hidden">
+                <div className="flex items-center justify-between border-b border-hairline bg-surface-2/40 px-4 py-2 font-mono text-xs">
+                  <span>optuna_bayesian_tuning.py</span>
+                  <span className="text-cyan">Optuna &gt;= 3.5.0 · XGBoost</span>
+                </div>
+                <pre className="overflow-x-auto p-4 font-mono text-xs leading-6 text-foreground">
 {`import optuna
 import xgboost as xgb
-from sklearn.model_selection import StratifiedKFold
-from sklearn.metrics import roc_auc_score
 import numpy as np
+from sklearn.datasets import make_classification
+from sklearn.model_selection import train_test_split, StratifiedKFold
+from sklearn.metrics import roc_auc_score
 
+# 1. Synthesize tabular dataset
+X, y = make_classification(n_samples=1500, n_features=12, weights=[0.75, 0.25], random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.20, random_state=42, stratify=y)
+
+# Suppress trial spam
+optuna.logging.set_verbosity(optuna.logging.WARNING)
+
+# 2. Define Objective Function with TPE Trial Suggestions
 def objective(trial):
-    # 1. Define hyperparameter search distributions
     params = {
-        "n_estimators": 800,
-        "learning_rate": trial.suggest_float("learning_rate", 0.01, 0.1, log=True),
-        "max_depth": trial.suggest_int("max_depth", 3, 8),
-        "min_child_weight": trial.suggest_int("min_child_weight", 1, 10),
-        "gamma": trial.suggest_float("gamma", 0.0, 2.0),
-        "subsample": trial.suggest_float("subsample", 0.6, 0.95),
-        "colsample_bytree": trial.suggest_float("colsample_bytree", 0.5, 0.95),
-        "reg_alpha": trial.suggest_float("reg_alpha", 1e-3, 10.0, log=True),
-        "reg_lambda": trial.suggest_float("reg_lambda", 1e-3, 10.0, log=True),
-        "random_state": 42,
+        "n_estimators": 600,
+        "learning_rate": trial.suggest_float("learning_rate", 0.01, 0.15, log=True),
+        "max_depth": trial.suggest_int("max_depth", 3, 6),
+        "min_child_weight": trial.suggest_int("min_child_weight", 1, 8),
+        "subsample": trial.suggest_float("subsample", 0.60, 0.95),
+        "colsample_bytree": trial.suggest_float("colsample_bytree", 0.60, 0.95),
+        "reg_lambda": trial.suggest_float("reg_lambda", 1e-2, 10.0, log=True),
         "eval_metric": "auc",
-        "early_stopping_rounds": 40,
+        "early_stopping_rounds": 30,
+        "tree_method": "hist",
+        "random_state": 42,
     }
 
-    # 2. Evaluate with Stratified 5-Fold Cross-Validation
-    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-    auc_scores = []
+    # Cross-validation inside each trial
+    cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=42)
+    scores = []
 
-    for train_idx, val_idx in cv.split(X, y):
-        X_tr, X_va = X[train_idx], X[val_idx]
-        y_tr, y_va = y[train_idx], y[val_idx]
+    for tr_idx, va_idx in cv.split(X_train, y_train):
+        X_tr, X_va = X_train[tr_idx], X_train[va_idx]
+        y_tr, y_va = y_train[tr_idx], y_train[va_idx]
 
         model = xgb.XGBClassifier(**params)
         model.fit(X_tr, y_tr, eval_set=[(X_va, y_va)], verbose=False)
+        scores.append(roc_auc_score(y_va, model.predict_proba(X_va)[:, 1]))
 
-        val_preds = model.predict_proba(X_va)[:, 1]
-        auc_scores.append(roc_auc_score(y_va, val_preds))
+    return np.mean(scores)
 
-    return np.mean(auc_scores)
-
-# 3. Create study and optimize for 50 trials
+# 3. Create Tree-Structured Parzen Estimator (TPE) Study
 study = optuna.create_study(direction="maximize")
-study.optimize(objective, n_trials=50)
+study.optimize(objective, n_trials=30)
 
-print(f"Best Trial ROC-AUC: {study.best_value:.4f}")
-print("Optimal Parameters:")
+print(f"Optimal 3-Fold CV ROC-AUC: {study.best_value:.4f}")
+print("Optimal Hyperparameters:")
 for k, v in study.best_params.items():
     print(f"  {k}: {v}")`}
-            </pre>
+                </pre>
+              </div>
+
+              <div className="panel p-4 space-y-2 border-hairline/80 text-xs">
+                <div className="font-semibold text-lime">Bayesian TPE: Balancing Exploration vs Exploitation</div>
+                <p className="text-muted-foreground leading-relaxed">
+                  Unlike passive grid or random search, Optuna builds a probability model <InlineMath formula="p(\theta | y)" /> mapping hyperparameter choices to metric performance using Tree-structured Parzen Estimators. It dynamically divides past trials into superior and inferior groups, proposing next configurations that maximize Expected Improvement (EI).
+                </p>
+              </div>
+            </div>
+          )}
+
+          <div className="panel p-5 space-y-3">
+            <h4 className="text-sm font-semibold text-foreground">Strategic Comparison: When to Use Each Technique</h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+              <div className="p-3 rounded bg-surface-2/60 border border-hairline/60 space-y-1.5">
+                <div className="font-mono font-bold text-orange">GridSearchCV</div>
+                <p className="text-muted-foreground"><strong>Best for:</strong> Narrow, discrete choices with known discrete anchors (e.g. comparing <code className="text-foreground">loss=['log_loss', 'exponential']</code> or 2 specific depths).</p>
+                <p className="text-muted-foreground"><strong>Limitation:</strong> Combinatorial explosion; useless for fine-tuning continuous learning rates or regularizers.</p>
+              </div>
+              <div className="p-3 rounded bg-surface-2/60 border border-hairline/60 space-y-1.5">
+                <div className="font-mono font-bold text-cyan">RandomizedSearchCV</div>
+                <p className="text-muted-foreground"><strong>Best for:</strong> Medium search spaces (4–8 hyperparameters) with continuous distributions. Fast baseline within 20–50 trials.</p>
+                <p className="text-muted-foreground"><strong>Limitation:</strong> Uninformed trials; does not learn from prior successful or failing configurations.</p>
+              </div>
+              <div className="p-3 rounded bg-surface-2/60 border border-hairline/60 space-y-1.5">
+                <div className="font-mono font-bold text-lime">Bayesian (Optuna)</div>
+                <p className="text-muted-foreground"><strong>Best for:</strong> Complex high-dimensional parameter spaces (8+ hyperparameters) and expensive model evaluations.</p>
+                <p className="text-muted-foreground"><strong>Limitation:</strong> Sequential evaluation overhead; requires careful setting of objective metric and early stopping patience.</p>
+              </div>
+            </div>
           </div>
         </div>
       </Container>

@@ -1,6 +1,7 @@
+import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { EarlyStoppingChart, LearningRateChart, OverfittingChart } from "@/components/lab/charts";
-import { ChartContainer, Container, PageHero, SectionHeader, SectionIndex, Pill } from "@/components/lab/primitives";
+import { ChartContainer, Container, PageHero, SectionHeader, SectionIndex, Pill, Tabs } from "@/components/lab/primitives";
 import { MathBlock, InlineMath } from "@/components/lab/MathBlock";
 import { KeyTakeaway, WarningCallout } from "@/components/lab/PedagogicalComponents";
 import { QuizBlock } from "@/components/lab/QuizBlock";
@@ -27,6 +28,8 @@ const SECTIONS = [
 ];
 
 function AdvancedPage() {
+  const [advTab, setAdvTab] = useState("imbalance");
+
   return (
     <>
       <PageHero
@@ -226,61 +229,229 @@ function AdvancedPage() {
         <SectionHeader
           id="python-workflow"
           index="05"
-          eyebrow="Hands-On Code"
-          title="Python Implementation: Early Stopping & Imbalanced Tuning"
+          eyebrow="Hands-On Python"
+          title="Advanced Production Workflows"
+          description="Complete, reproducible implementations for severe class imbalance management and side-by-side early stopping benchmarks across all major boosting frameworks."
         />
-        <div className="max-w-4xl space-y-4 md:ml-[136px]">
-          <div className="panel overflow-hidden">
-            <div className="flex items-center justify-between border-b border-hairline bg-surface-2/40 px-4 py-2 font-mono text-xs">
-              <span>advanced_boosting_pipeline.py</span>
-              <span className="text-cyan">Python 3.10+</span>
-            </div>
-            <pre className="overflow-x-auto p-4 font-mono text-xs leading-6 text-foreground">
-{`import xgboost as xgb
+        <div className="max-w-4xl space-y-6 md:ml-[136px]">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <Tabs
+              tabs={[
+                { value: "imbalance", label: "Imbalanced Learning & PR-AUC Thresholding" },
+                { value: "early_stopping", label: "Multi-Framework Early Stopping Benchmark" },
+              ]}
+              value={advTab}
+              onChange={setAdvTab}
+            />
+            <span className="text-xs font-mono text-muted-foreground">
+              Reference: <code className="text-cyan">python python/06_early_stopping_benchmarks.py</code>
+            </span>
+          </div>
+
+          {advTab === "imbalance" ? (
+            <div className="space-y-4">
+              <div className="panel overflow-hidden">
+                <div className="flex items-center justify-between border-b border-hairline bg-surface-2/40 px-4 py-2 font-mono text-xs">
+                  <span>imbalanced_boosting_workflow.py</span>
+                  <span className="text-cyan">Python 3.10+ · XGBoost</span>
+                </div>
+                <pre className="overflow-x-auto p-4 font-mono text-xs leading-6 text-foreground">
+{`import numpy as np
+import xgboost as xgb
+from sklearn.datasets import make_classification
+from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, average_precision_score, precision_recall_curve
-import numpy as np
 
-# 1. Compute scale_pos_weight from training distribution
-num_neg = np.sum(y_train == 0)
-num_pos = np.sum(y_train == 1)
-scale_pos_weight = num_neg / num_pos
-print(f"Class ratio: {num_neg} negatives / {num_pos} positives -> scale_pos_weight: {scale_pos_weight:.2f}")
-
-# 2. Build regularized XGBoost model
-model = xgb.XGBClassifier(
-    n_estimators=2000,
-    learning_rate=0.02,         # small shrinkage
-    max_depth=4,                # shallow trees
-    min_child_weight=5,         # prevents tiny noise leaves
-    subsample=0.8,              # row subsampling
-    colsample_bytree=0.8,       # feature subsampling
-    reg_lambda=2.0,             # L2 regularization
-    scale_pos_weight=scale_pos_weight,
-    eval_metric=["aucpr", "logloss"],
-    early_stopping_rounds=50,   # stop if PR-AUC stops improving
+# 1. Synthesize severe 90:10 imbalanced dataset (simulating credit defaults or fraud)
+X, y = make_classification(
+    n_samples=2500,
+    n_features=15,
+    n_informative=10,
+    n_redundant=2,
+    weights=[0.90, 0.10],  # 10% positive rate
     random_state=42,
 )
 
-# 3. Fit with validation monitoring
+# 2. Three-way stratified split: 60% train, 20% validation, 20% held-out test
+X_train_val, X_test, y_train_val, y_test = train_test_split(
+    X, y, test_size=0.20, random_state=42, stratify=y
+)
+X_train, X_val, y_train, y_val = train_test_split(
+    X_train_val, y_train_val, test_size=0.25, random_state=42, stratify=y_train_val
+)
+
+# 3. Compute scale_pos_weight from training split: N_neg / N_pos
+num_neg = np.sum(y_train == 0)
+num_pos = np.sum(y_train == 1)
+scale_pos_weight = num_neg / num_pos
+print(f"Class counts: {num_neg} negatives / {num_pos} positives -> scale_pos_weight = {scale_pos_weight:.2f}")
+
+# 4. Build regularized XGBoost model optimized for Precision-Recall AUC
+model = xgb.XGBClassifier(
+    n_estimators=1500,
+    learning_rate=0.03,         # Small shrinkage
+    max_depth=4,                # Constrain tree complexity
+    min_child_weight=4,         # Prevent tiny minority noise leaves
+    subsample=0.8,              # Row subsampling
+    colsample_bytree=0.8,       # Column subsampling
+    reg_lambda=2.0,             # L2 regularization
+    scale_pos_weight=scale_pos_weight, # Directly scales positive gradients
+    eval_metric=["aucpr", "logloss"],  # Focus early stopping on PR-AUC
+    early_stopping_rounds=40,
+    tree_method="hist",
+    random_state=42,
+)
+
+# 5. Fit with validation monitoring
 model.fit(
     X_train, y_train,
     eval_set=[(X_val, y_val)],
-    verbose=100
+    verbose=False,
 )
 
-# 4. Predict probabilities
+print(f"Best Iteration: {model.best_iteration}")
+
+# 6. Predict probabilities on unseen test set
 y_proba = model.predict_proba(X_test)[:, 1]
 pr_auc = average_precision_score(y_test, y_proba)
-print(f"Test PR-AUC: {pr_auc:.4f}")
+print(f"Test PR-AUC (Average Precision): {pr_auc:.4f}")
 
-# 5. Tune Decision Threshold for Business Profitability
+# 7. Threshold Optimization: Find threshold maximizing F1 or enforcing 80% recall
 precisions, recalls, thresholds = precision_recall_curve(y_test, y_proba)
 # Select threshold where recall >= 0.80 with maximum precision
-valid_idx = np.where(recalls[:-1] >= 0.80)[0]
-optimal_threshold = thresholds[valid_idx[-1]]
-print(f"Optimal Threshold for 80% Recall: {optimal_threshold:.3f}")`}
-            </pre>
-          </div>
+valid_indices = np.where(recalls[:-1] >= 0.80)[0]
+optimal_threshold = thresholds[valid_indices[-1]]
+print(f"Optimal Threshold for >= 80% Recall: {optimal_threshold:.4f}")
+
+y_pred_opt = (y_proba >= optimal_threshold).astype(int)
+print("\\nClassification Report at Optimal Threshold:")
+print(classification_report(y_test, y_pred_opt, digits=4))`}
+                </pre>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                <div className="panel p-4 space-y-2 border-hairline/80">
+                  <div className="font-semibold text-cyan">Why PR-AUC Over ROC-AUC on Imbalanced Data</div>
+                  <p className="text-muted-foreground leading-relaxed">
+                    When the negative class dominates 90:10 or 99:1, a large flood of False Positives barely shifts the False Positive Rate <InlineMath formula="\text{FPR} = \text{FP} / (\text{FP} + \text{TN})" />, making the ROC-AUC curve appear deceitfully optimistic (&gt;0.95). In contrast, PR-AUC evaluates Precision <InlineMath formula="\text{TP} / (\text{TP} + \text{FP})" /> against Recall, exposing any surge in False Positives immediately.
+                  </p>
+                </div>
+                <div className="panel p-4 space-y-2 border-hairline/80">
+                  <div className="font-semibold text-violet">Threshold Optimization vs Default 0.50</div>
+                  <p className="text-muted-foreground leading-relaxed">
+                    By default, <code className="text-foreground">predict()</code> uses a fixed <InlineMath formula="\theta = 0.50" /> threshold. In production imbalanced tasks (loan underwriting, fraud, cancer screening), missing a positive sample is orders of magnitude more expensive than a false alarm. Empirically shifting the decision threshold along the precision-recall curve aligns model outputs with real business loss utilities.
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="panel overflow-hidden">
+                <div className="flex items-center justify-between border-b border-hairline bg-surface-2/40 px-4 py-2 font-mono text-xs">
+                  <span>early_stopping_benchmarks.py</span>
+                  <span className="text-cyan">Scikit-Learn · XGBoost · LightGBM · CatBoost</span>
+                </div>
+                <pre className="overflow-x-auto p-4 font-mono text-xs leading-6 text-foreground">
+{`from sklearn.datasets import make_classification
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import roc_auc_score
+from sklearn.ensemble import GradientBoostingClassifier
+import xgboost as xgb
+import lightgbm as lgb
+from catboost import CatBoostClassifier
+
+# 1. Controlled benchmark dataset (1,800 samples, 12 features)
+X, y = make_classification(n_samples=1800, n_features=12, weights=[0.70, 0.30], random_state=42)
+X_train_val, X_test, y_train_val, y_test = train_test_split(X, y, test_size=0.20, random_state=42, stratify=y)
+X_train, X_val, y_train, y_val = train_test_split(X_train_val, y_train_val, test_size=0.25, random_state=42, stratify=y_train_val)
+
+patience = 25  # Patience rounds before early halting
+
+# --- 1. Scikit-Learn ---
+# Truncates internal estimators_ list to n_estimators_ upon early exit
+sk_gbm = GradientBoostingClassifier(
+    n_estimators=1000,
+    learning_rate=0.03,
+    max_depth=4,
+    n_iter_no_change=patience,
+    validation_fraction=0.20,
+    random_state=42,
+)
+sk_gbm.fit(X_train, y_train)
+print(f"Scikit-Learn Optimal Trees: {sk_gbm.n_estimators_} (out of 1,000)")
+print(f"Scikit-Learn Test ROC-AUC:   {roc_auc_score(y_test, sk_gbm.predict_proba(X_test)[:, 1]):.4f}")
+
+# --- 2. XGBoost ---
+# Automatically routes predict() to [0, best_iteration + 1)
+xgb_clf = xgb.XGBClassifier(
+    n_estimators=1000,
+    learning_rate=0.03,
+    max_depth=4,
+    early_stopping_rounds=patience,
+    eval_metric="auc",
+    random_state=42,
+)
+xgb_clf.fit(X_train, y_train, eval_set=[(X_val, y_val)], verbose=False)
+print(f"XGBoost Best Iteration:     {xgb_clf.best_iteration}")
+print(f"XGBoost Test ROC-AUC:        {roc_auc_score(y_test, xgb_clf.predict_proba(X_test)[:, 1]):.4f}")
+
+# --- 3. LightGBM ---
+# Uses early_stopping callback; best_iteration_ is stored and used by default
+lgb_clf = lgb.LGBMClassifier(
+    n_estimators=1000,
+    learning_rate=0.03,
+    num_leaves=31,
+    random_state=42,
+)
+lgb_clf.fit(
+    X_train, y_train,
+    eval_set=[(X_val, y_val)],
+    callbacks=[lgb.early_stopping(stopping_rounds=patience, verbose=False)],
+)
+print(f"LightGBM Best Iteration:    {lgb_clf.best_iteration_}")
+print(f"LightGBM Test ROC-AUC:       {roc_auc_score(y_test, lgb_clf.predict_proba(X_test)[:, 1]):.4f}")
+
+# --- 4. CatBoost ---
+# use_best_model=True (default) restores weights automatically to the optimal round
+cb_clf = CatBoostClassifier(
+    iterations=1000,
+    learning_rate=0.03,
+    depth=5,
+    early_stopping_rounds=patience,
+    use_best_model=True,
+    eval_metric="AUC",
+    random_seed=42,
+    verbose=False,
+)
+cb_clf.fit(X_train, y_train, eval_set=(X_val, y_val), verbose=False)
+print(f"CatBoost Best Iteration:    {cb_clf.get_best_iteration()}")
+print(f"CatBoost Test ROC-AUC:       {roc_auc_score(y_test, cb_clf.predict_proba(X_test)[:, 1]):.4f}")`}
+                </pre>
+              </div>
+
+              <div className="panel p-4 space-y-3 text-xs border-hairline/60">
+                <h4 className="font-semibold text-foreground">Checkpoint Restoration Architecture by Library</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-muted-foreground">
+                  <div className="rounded bg-surface-2/40 p-3 space-y-1">
+                    <span className="font-semibold text-foreground">Scikit-Learn:</span>
+                    <p>Internal holdout validation. When performance plateaus for <code className="text-cyan">n_iter_no_change</code> rounds, the estimator truncates its <code className="text-foreground">estimators_</code> array to <code className="text-cyan">n_estimators_</code>. Predictions naturally use only the retained trees.</p>
+                  </div>
+                  <div className="rounded bg-surface-2/40 p-3 space-y-1">
+                    <span className="font-semibold text-foreground">XGBoost:</span>
+                    <p>Stores all trained trees up to the stopping point, but records <code className="text-cyan">best_iteration</code>. Modern XGBoost automatically restricts <code className="text-foreground">predict()</code> to slice <code className="text-cyan">[0, best_iteration + 1)</code>.</p>
+                  </div>
+                  <div className="rounded bg-surface-2/40 p-3 space-y-1">
+                    <span className="font-semibold text-foreground">LightGBM:</span>
+                    <p>Driven by the <code className="text-cyan">early_stopping</code> callback. Stores <code className="text-cyan">best_iteration_</code>. When early stopping is triggered, subsequent calls to <code className="text-foreground">predict()</code> automatically evaluate only up to <code className="text-cyan">best_iteration_</code>.</p>
+                  </div>
+                  <div className="rounded bg-surface-2/40 p-3 space-y-1">
+                    <span className="font-semibold text-foreground">CatBoost:</span>
+                    <p>Configured via <code className="text-cyan">use_best_model=True</code> (the default). CatBoost automatically trims the model state to the optimal checkpoint, ensuring production inferences match the best validation score.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </Container>
 
