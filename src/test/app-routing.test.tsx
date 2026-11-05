@@ -4,11 +4,13 @@ import { describe, expect, it } from "vitest";
 
 import { routeTree } from "@/routeTree.gen";
 
+const testRouter = createRouter({
+  routeTree,
+  context: { queryClient: new QueryClient() },
+});
+
 describe("App curriculum routing", () => {
-  const router = createRouter({
-    routeTree,
-    context: { queryClient: new QueryClient() },
-  });
+  const router = testRouter;
 
   const routesToTest = [
     { path: "/", name: "Home" },
@@ -58,5 +60,27 @@ describe("Curriculum & Algorithm Data Integrity", () => {
       expect(a.limitations.length).toBeGreaterThan(0);
       expect(a.applications.length).toBeGreaterThan(0);
     });
+  });
+});
+
+describe("Brand & Navigation Logo", () => {
+  it("imports valid logo image asset for header and footer", async () => {
+    const logoModule = await import("@/assets/boosting-lab-icon.jpg");
+    expect(logoModule.default).toBeTruthy();
+    expect(logoModule.default).toMatch(/boosting-lab-icon/);
+  });
+
+  it("exports Logo component configured with valid image asset and alt text", async () => {
+    const { Logo } = await import("@/components/lab/NavigationBar");
+    expect(Logo).toBeTypeOf("function");
+    const logoElement = Logo();
+    expect(logoElement.type).toBeTruthy();
+    const children = logoElement.props.children;
+    expect(children).toHaveLength(2);
+    const imgElement = children[0];
+    expect(imgElement.props.src).toMatch(/boosting-lab-icon/);
+    expect(imgElement.props.alt).toBe("Boosting Lab logo");
+    expect(imgElement.props.width).toBe(28);
+    expect(imgElement.props.height).toBe(28);
   });
 });

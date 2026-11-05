@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { Menu, X, ChevronDown, BookOpen } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { CURRICULUM_MODULES } from "@/data/curriculum";
+import logoSrc from "@/assets/boosting-lab-icon.jpg";
 
 export const NAV_ITEMS = [
   { to: "/", label: "Home" },
@@ -21,8 +22,8 @@ export function Logo() {
   return (
     <Link to="/" className="flex shrink-0 items-center gap-2.5">
       <img
-        src="/boosting-lab-icon.jpg"
-        alt="Boosting Lab"
+        src={logoSrc}
+        alt="Boosting Lab logo"
         width={28}
         height={28}
         className="size-7 shrink-0 object-contain"
