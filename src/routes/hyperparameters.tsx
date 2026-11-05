@@ -548,7 +548,17 @@ study.optimize(objective, n_trials=30)
 print(f"Optimal 3-Fold CV ROC-AUC: {study.best_value:.4f}")
 print("Optimal Hyperparameters:")
 for k, v in study.best_params.items():
-    print(f"  {k}: {v}")`}
+    print(f"  {k}: {v}")
+
+# 4. Retrain final model on full training set with best parameters
+final_params = study.best_params.copy()
+final_params.update({"n_estimators": 600, "eval_metric": "auc", "random_state": 42})
+final_model = xgb.XGBClassifier(**final_params)
+final_model.fit(X_train, y_train, verbose=False)
+
+# 5. Evaluate final model on untouched held-out test cohort
+test_proba = final_model.predict_proba(X_test)[:, 1]
+print(f"Final Held-Out Test ROC-AUC: {roc_auc_score(y_test, test_proba):.4f}")`}
                 </pre>
               </div>
 
