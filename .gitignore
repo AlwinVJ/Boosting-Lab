@@ -114,6 +114,10 @@ __pycache__/
 *.py[cod]
 *$py.class
 .venv/
+.venv*/
 venv/
 *.joblib
 *.cbm
+catboost_info/
+lightgbm_model.txt
+xgboost_model.json
