@@ -156,7 +156,7 @@ npm run build
 ```
 This runs `vite build` followed by `node scripts/prepare-gh-pages.mjs`. It compiles the client and SSR bundles, executes TanStack Start's prerender engine across all 11 curriculum routes, copies `index.html` to `404.html` for client-side routing fallback, and creates `.nojekyll` to prevent GitHub Pages from bypassing underscore-prefixed asset directories.
 
-The static deployment artifact is stored in `.output/public/`.
+The static deployment artifact is stored in `dist/client/`.
 
 To preview the production build locally:
 ```bash
@@ -182,7 +182,7 @@ Deployments are configured with a manual trigger so you have full control over w
 3. Click the **Run workflow** button on the right side.
 4. Ensure the `main` branch is selected, then click the green **Run workflow** button.
 5. The workflow will execute:
-   * **build**: Checks out code, sets up Node.js 22, installs dependencies (`npm ci`), runs TypeScript check (`npx tsc --noEmit`), runs unit tests (`npm test`), builds static prerendered HTML with `BASE_PATH: /Boosting-Lab/`, and uploads the `.output/public` artifact.
+   * **build**: Checks out code, sets up Node.js 22, installs dependencies (`npm ci`), runs TypeScript check (`npx tsc --noEmit`), runs unit tests (`npm test`), builds static prerendered HTML with `BASE_PATH: /Boosting-Lab/`, and uploads the `dist/client` artifact.
    * **deploy**: Publishes the artifact to GitHub Pages with OpenID Connect (OIDC) token authentication.
 
 ### 3. Verifying Your Deployment

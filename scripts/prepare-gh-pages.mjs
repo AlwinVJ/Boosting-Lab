@@ -1,12 +1,20 @@
 import { copyFileSync, existsSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-const publicDir = resolve(".output", "public");
+// Support both TanStack Start native (dist/client) and Nitro legacy (.output/public)
+const candidateDirs = [
+  resolve("dist", "client"),
+  resolve(".output", "public"),
+];
 
-if (!existsSync(publicDir)) {
-  console.error("Error: .output/public directory does not exist. Run vite build first.");
+const publicDir = candidateDirs.find((dir) => existsSync(dir));
+
+if (!publicDir) {
+  console.error("Error: Neither dist/client nor .output/public directory exists. Run vite build first.");
   process.exit(1);
 }
+
+console.log(`Detected static build output directory: ${publicDir}`);
 
 // 1. Copy index.html -> 404.html for GitHub Pages SPA client-side fallback
 const indexPath = resolve(publicDir, "index.html");
@@ -16,14 +24,14 @@ if (existsSync(indexPath)) {
   copyFileSync(indexPath, fallbackPath);
   console.log("Successfully created 404.html fallback for GitHub Pages.");
 } else {
-  console.error("Error: index.html not found in .output/public.");
+  console.error(`Error: index.html not found in ${publicDir}.`);
   process.exit(1);
 }
 
 // 2. Create .nojekyll to prevent GitHub Pages from bypassing underscore-prefixed files
 const nojekyllPath = resolve(publicDir, ".nojekyll");
 writeFileSync(nojekyllPath, "", "utf8");
-console.log("Successfully created .nojekyll in .output/public.");
+console.log(`Successfully created .nojekyll in ${publicDir}.`);
 
 // 3. Verify prerendered route directories
 const expectedRoutes = [
@@ -49,5 +57,5 @@ for (const route of expectedRoutes) {
 }
 
 if (allRoutesPresent) {
-  console.log(`Verified all ${expectedRoutes.length} nested route index.html files exist.`);
+  console.log(`Verified all ${expectedRoutes.length} nested route index.html files exist in ${publicDir}.`);
 }

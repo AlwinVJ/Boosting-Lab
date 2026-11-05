@@ -2,7 +2,12 @@ import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
 
-const publicDir = path.resolve(".output", "public");
+const candidateDirs = [
+  path.resolve("dist", "client"),
+  path.resolve(".output", "public"),
+];
+const publicDir = candidateDirs.find((d) => fs.existsSync(d)) || path.resolve("dist", "client");
+console.log(`Verifying static serving from directory: ${publicDir}`);
 
 const server = http.createServer((req, res) => {
   let urlPath = req.url || "/";

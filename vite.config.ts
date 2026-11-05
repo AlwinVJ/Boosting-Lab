@@ -3,7 +3,6 @@ import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import tsconfigPaths from "vite-tsconfig-paths";
-import { nitro } from "nitro/vite";
 
 const basePath =
   process.env["BASE_PATH"] ||
@@ -39,8 +38,5 @@ export default defineConfig({
     viteReact(),
     tailwindcss(),
     tsconfigPaths(),
-    nitro({
-      preset: "node-server",
-    }),
   ],
 });
