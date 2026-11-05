@@ -36,7 +36,7 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
         <p className="mt-2 text-sm text-muted-foreground">Something went wrong. Try refreshing or head back home.</p>
         <div className="mt-6 flex justify-center gap-2">
           <button onClick={() => { router.invalidate(); reset(); }} className="bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">Try again</button>
-          <a href="/" className="border border-input px-4 py-2 text-sm">Go home</a>
+          <Link to="/" className="border border-input px-4 py-2 text-sm">Go home</Link>
         </div>
       </div>
     </div>
@@ -62,7 +62,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" },
       { rel: "stylesheet", href: "https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/katex.min.css" },
       { rel: "stylesheet", href: appCss },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "icon", href: `${import.meta.env.BASE_URL}favicon.ico`, type: "image/x-icon" },
     ],
   }),
   shellComponent: RootShell,
