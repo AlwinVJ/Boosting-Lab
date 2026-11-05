@@ -64,3 +64,25 @@ if (!allRoutesPresent) {
 }
 
 console.log(`Verified all ${expectedRoutes.length} nested route index.html files exist in ${publicDir}.`);
+
+// 4. Generate serve.json for local preview compatibility with `npx serve dist/client`
+const serveConfig = {
+  redirects: [
+    { source: "/", destination: "/Boosting-Lab/", type: 302 }
+  ],
+  rewrites: [
+    { source: "/Boosting-Lab/assets/:file", destination: "/assets/:file" },
+    { source: "/Boosting-Lab/favicon.ico", destination: "/favicon.ico" },
+    { source: "/Boosting-Lab/robots.txt", destination: "/robots.txt" },
+    { source: "/Boosting-Lab", destination: "/index.html" },
+    { source: "/Boosting-Lab/", destination: "/index.html" },
+    { source: "/Boosting-Lab/:route", destination: "/:route/index.html" },
+    { source: "/Boosting-Lab/:route/", destination: "/:route/index.html" },
+    { source: "/Boosting-Lab/**", destination: "/404.html" }
+  ]
+};
+
+const serveConfigPath = resolve(publicDir, "serve.json");
+writeFileSync(serveConfigPath, JSON.stringify(serveConfig, null, 2), "utf8");
+console.log(`Successfully created serve.json in ${publicDir} for local static server preview.`);
+
