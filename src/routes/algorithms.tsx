@@ -1,6 +1,7 @@
+import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { AlgorithmExplorer } from "@/components/lab/learning";
-import { ComparisonTable, Container, PageHero, SectionHeader, SectionIndex, Pill } from "@/components/lab/primitives";
+import { ComparisonTable, Container, PageHero, SectionHeader, SectionIndex, Pill, Tabs } from "@/components/lab/primitives";
 import { MathBlock, InlineMath } from "@/components/lab/MathBlock";
 import { KeyTakeaway, WarningCallout } from "@/components/lab/PedagogicalComponents";
 import { QuizBlock } from "@/components/lab/QuizBlock";
@@ -28,6 +29,8 @@ const SECTIONS = [
 ];
 
 function AlgorithmsPage() {
+  const [algoTab, setAlgoTab] = useState("lightgbm");
+
   return (
     <>
       <PageHero
@@ -317,60 +320,278 @@ function AlgorithmsPage() {
         <SectionHeader
           id="code-implementations"
           index="06"
-          eyebrow="Code Example"
-          title="Python Implementations: LightGBM & CatBoost"
+          eyebrow="Hands-On Python"
+          title="Production-Grade Implementations: LightGBM & CatBoost"
+          description="Complete, reproducible implementations demonstrating native categorical handling, leaf-wise vs oblivious tree topologies, early stopping callbacks, and model persistence."
         />
         <div className="max-w-4xl space-y-6 md:ml-[136px]">
-          <div className="panel overflow-hidden">
-            <div className="flex items-center justify-between border-b border-hairline bg-surface-2/40 px-4 py-2 font-mono text-xs">
-              <span>lightgbm_catboost_comparison.py</span>
-              <span className="text-cyan">Python 3.10+</span>
-            </div>
-            <pre className="overflow-x-auto p-4 font-mono text-xs leading-6 text-foreground">
-{`import lightgbm as lgb
-from catboost import CatBoostClassifier, Pool
-from sklearn.metrics import roc_auc_score
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <Tabs
+              tabs={[
+                { value: "lightgbm", label: "LightGBM (Leaf-Wise & GOSS)" },
+                { value: "catboost", label: "CatBoost (Ordered Boosting & Oblivious Trees)" },
+              ]}
+              value={algoTab}
+              onChange={setAlgoTab}
+            />
+            <span className="text-xs font-mono text-muted-foreground">
+              Reference: <code className="text-cyan">python python/04_lightgbm_catboost_workflow.py</code>
+            </span>
+          </div>
 
-# ==========================================
-# 1. LIGHTGBM PIPELINE
-# ==========================================
+          {algoTab === "lightgbm" ? (
+            <div className="space-y-4">
+              <div className="panel overflow-hidden">
+                <div className="flex items-center justify-between border-b border-hairline bg-surface-2/40 px-4 py-2 font-mono text-xs">
+                  <span>lightgbm_workflow.py</span>
+                  <span className="text-cyan">lightgbm &gt;= 4.0.0</span>
+                </div>
+                <pre className="overflow-x-auto p-4 font-mono text-xs leading-6 text-foreground">
+{`import numpy as np
+import pandas as pd
+import lightgbm as lgb
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import roc_auc_score, accuracy_score, classification_report
+
+# 1. Synthesize realistic tabular credit dataset with numeric & categorical columns
+rng = np.random.default_rng(42)
+n_samples = 3000
+
+credit_score = rng.normal(670, 60, n_samples).clip(350, 850)
+income = np.exp(rng.normal(11.0, 0.45, n_samples)).clip(20000, 200000)
+dti = rng.uniform(0.05, 0.65, n_samples)
+loan_amount = (income * rng.uniform(0.15, 0.40, n_samples)).round(-2)
+
+employment_type = rng.choice(["Salaried", "Self-Employed", "Hourly", "Commission"], size=n_samples, p=[0.55, 0.20, 0.15, 0.10])
+home_ownership = rng.choice(["Rent", "Mortgage", "Own"], size=n_samples, p=[0.45, 0.40, 0.15])
+loan_purpose = rng.choice(["Debt Consolidation", "Home Improvement", "Major Purchase", "Medical"], size=n_samples)
+
+# Logistic data generating process
+z = (credit_score - 670) / 60
+logit = -2.5 - 0.9 * z + 3.0 * (dti - 0.30) + (loan_amount / income - 0.25) * 1.5
+logit += np.where(home_ownership == "Rent", 0.35, -0.20)
+logit += np.where(employment_type == "Self-Employed", 0.25, 0.0)
+prob = 1 / (1 + np.exp(-logit))
+default = (rng.random(n_samples) < prob).astype(int)
+
+df = pd.DataFrame({
+    "credit_score": credit_score,
+    "income": income,
+    "dti": dti,
+    "loan_amount": loan_amount,
+    "employment_type": employment_type,
+    "home_ownership": home_ownership,
+    "loan_purpose": loan_purpose,
+    "default": default,
+})
+
+# 2. In LightGBM, categorical features MUST be set to pandas 'category' dtype
+cat_cols = ["employment_type", "home_ownership", "loan_purpose"]
+for col in cat_cols:
+    df[col] = df[col].astype("category")
+
+X = df.drop(columns=["default"])
+y = df["default"]
+
+# 3. Three-way stratified split: 60% train, 20% validation, 20% held-out test
+X_train_val, X_test, y_train_val, y_test = train_test_split(
+    X, y, test_size=0.20, random_state=42, stratify=y
+)
+X_train, X_val, y_train, y_val = train_test_split(
+    X_train_val, y_train_val, test_size=0.25, random_state=42, stratify=y_train_val
+)
+
+# 4. Instantiate LightGBM with leaf-wise growth parameters
+# CRITICAL: subsample requires subsample_freq > 0 to activate bagging!
 lgb_model = lgb.LGBMClassifier(
     n_estimators=1000,
     learning_rate=0.03,
-    num_leaves=31,              # controls complexity in leaf-wise growth
-    max_depth=-1,               # unconstrained depth; regulated by num_leaves
-    boosting_type="gbdt",       # or 'goss' for gradient-based sampling
-    subsample=0.8,
-    colsample_bytree=0.8,
+    num_leaves=31,              # Primary tree complexity parameter
+    max_depth=5,                # Upper depth ceiling to prevent single-leaf deep spikes
+    min_child_samples=25,       # Minimum samples required in a terminal leaf
+    subsample=0.8,              # Bagging fraction
+    subsample_freq=1,           # Enables bagging every 1 iteration (CRITICAL!)
+    colsample_bytree=0.8,       # Feature subsampling ratio
     random_state=42,
 )
+
+# 5. Fit with early stopping callback
 lgb_model.fit(
     X_train, y_train,
     eval_set=[(X_val, y_val)],
-    callbacks=[lgb.early_stopping(stopping_rounds=50, verbose=False)],
+    callbacks=[lgb.early_stopping(stopping_rounds=40, verbose=False)],
 )
-lgb_auc = roc_auc_score(y_val, lgb_model.predict_proba(X_val)[:, 1])
-print(f"LightGBM ROC-AUC: {lgb_auc:.4f}")
 
-# ==========================================
-# 2. CATBOOST PIPELINE (Native Categorical Handling)
-# ==========================================
-cat_features = ["occupation", "education_level", "home_ownership"]
+# 6. Evaluation on held-out test set
+y_pred = lgb_model.predict(X_test)
+y_proba = lgb_model.predict_proba(X_test)[:, 1]
+print(f"Optimal Iteration: {lgb_model.best_iteration_}")
+print(f"Test ROC-AUC:      {roc_auc_score(y_test, y_proba):.4f}")
+print(f"Test Accuracy:     {accuracy_score(y_test, y_pred):.4f}")
 
+# 7. Model Persistence
+lgb_model.booster_.save_model("lightgbm_model.txt")
+print("Model saved to lightgbm_model.txt")`}
+                </pre>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                <div className="panel p-4 space-y-2 border-hairline/80">
+                  <div className="font-semibold text-cyan">The subsample_freq = 1 Requirement</div>
+                  <p className="text-muted-foreground leading-relaxed">
+                    A notorious LightGBM trap: specifying <code className="text-foreground">subsample=0.8</code> has <strong>zero effect</strong> unless <code className="text-cyan">subsample_freq &gt; 0</code> is also explicitly passed. LightGBM defaults <code className="text-foreground">subsample_freq=0</code>, disabling row subsampling completely regardless of <code className="text-foreground">subsample</code>. Always pass <code className="text-cyan">subsample_freq=1</code> to bag rows every iteration.
+                  </p>
+                </div>
+                <div className="panel p-4 space-y-2 border-hairline/80">
+                  <div className="font-semibold text-violet">num_leaves vs max_depth Relationship</div>
+                  <p className="text-muted-foreground leading-relaxed">
+                    In depth-wise algorithms, <InlineMath formula="T = 2^{\text{depth}}" /> leaves are grown uniformly. In LightGBM's leaf-wise strategy, the tree greedily splits the single leaf maximizing loss reduction. A tree with <code className="text-foreground">num_leaves=31</code> can attain depth 30 if unconstrained. Pairing <code className="text-cyan">num_leaves=31</code> with a moderate <code className="text-cyan">max_depth=5</code> or <code className="text-cyan">6</code> prevents runaway asymmetric branches.
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="panel overflow-hidden">
+                <div className="flex items-center justify-between border-b border-hairline bg-surface-2/40 px-4 py-2 font-mono text-xs">
+                  <span>catboost_workflow.py</span>
+                  <span className="text-cyan">catboost &gt;= 1.2.0</span>
+                </div>
+                <pre className="overflow-x-auto p-4 font-mono text-xs leading-6 text-foreground">
+{`import numpy as np
+import pandas as pd
+from catboost import CatBoostClassifier, Pool
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import roc_auc_score, accuracy_score, classification_report
+
+# 1. Synthesize mixed tabular dataset with raw string categorical columns
+rng = np.random.default_rng(42)
+n_samples = 3000
+
+credit_score = rng.normal(670, 60, n_samples).clip(350, 850)
+income = np.exp(rng.normal(11.0, 0.45, n_samples)).clip(20000, 200000)
+dti = rng.uniform(0.05, 0.65, n_samples)
+loan_amount = (income * rng.uniform(0.15, 0.40, n_samples)).round(-2)
+
+employment_type = rng.choice(["Salaried", "Self-Employed", "Hourly", "Commission"], size=n_samples, p=[0.55, 0.20, 0.15, 0.10])
+home_ownership = rng.choice(["Rent", "Mortgage", "Own"], size=n_samples, p=[0.45, 0.40, 0.15])
+loan_purpose = rng.choice(["Debt Consolidation", "Home Improvement", "Major Purchase", "Medical"], size=n_samples)
+
+z = (credit_score - 670) / 60
+logit = -2.5 - 0.9 * z + 3.0 * (dti - 0.30) + (loan_amount / income - 0.25) * 1.5
+logit += np.where(home_ownership == "Rent", 0.35, -0.20)
+logit += np.where(employment_type == "Self-Employed", 0.25, 0.0)
+prob = 1 / (1 + np.exp(-logit))
+default = (rng.random(n_samples) < prob).astype(int)
+
+df = pd.DataFrame({
+    "credit_score": credit_score,
+    "income": income,
+    "dti": dti,
+    "loan_amount": loan_amount,
+    "employment_type": employment_type,  # Raw strings supported directly!
+    "home_ownership": home_ownership,
+    "loan_purpose": loan_purpose,
+    "default": default,
+})
+
+cat_cols = ["employment_type", "home_ownership", "loan_purpose"]
+X = df.drop(columns=["default"])
+y = df["default"]
+
+# 2. Three-way stratified split: 60% train, 20% validation, 20% held-out test
+X_train_val, X_test, y_train_val, y_test = train_test_split(
+    X, y, test_size=0.20, random_state=42, stratify=y
+)
+X_train, X_val, y_train, y_val = train_test_split(
+    X_train_val, y_train_val, test_size=0.25, random_state=42, stratify=y_train_val
+)
+
+# 3. Instantiate CatBoostClassifier with Ordered Boosting & Oblivious Trees
 cb_model = CatBoostClassifier(
     iterations=1000,
     learning_rate=0.03,
-    depth=6,                    # symmetric tree depth
-    cat_features=cat_features,  # passed directly without one-hot encoding!
+    depth=6,                    # Oblivious (symmetric) tree depth
+    cat_features=cat_cols,      # Native categorical list: no one-hot or target encoding needed!
+    l2_leaf_reg=3.0,            # L2 penalty on leaf values
     eval_metric="AUC",
-    early_stopping_rounds=50,
+    early_stopping_rounds=40,   # Stops when validation AUC stops improving
     random_seed=42,
-    verbose=False
+    verbose=False,
 )
-cb_model.fit(X_train, y_train, eval_set=(X_val, y_val))
-cb_auc = roc_auc_score(y_val, cb_model.predict_proba(X_val)[:, 1])
-print(f"CatBoost ROC-AUC: {cb_auc:.4f}")`}
-            </pre>
+
+# 4. Train with validation monitoring
+cb_model.fit(
+    X_train, y_train,
+    eval_set=(X_val, y_val),
+    verbose=False,
+)
+
+# 5. Out-of-sample evaluation on held-out test set
+y_pred = cb_model.predict(X_test)
+y_proba = cb_model.predict_proba(X_test)[:, 1]
+
+print(f"Optimal Iteration: {cb_model.get_best_iteration()}")
+print(f"Best Val AUC:      {cb_model.get_best_score()['validation']['AUC']:.4f}")
+print(f"Test ROC-AUC:      {roc_auc_score(y_test, y_proba):.4f}")
+print(f"Test Accuracy:     {accuracy_score(y_test, y_pred):.4f}")
+
+# 6. Feature Importances (PredictionValuesChange)
+print("\\nFeature Importances:")
+for col, imp in zip(X.columns, cb_model.get_feature_importance()):
+    print(f"  {col:20s}: {imp:.2f}%")
+
+# 7. Model Persistence
+cb_model.save_model("catboost_model.cbm")
+print("Model saved to catboost_model.cbm")`}
+                </pre>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                <div className="panel p-4 space-y-2 border-hairline/80">
+                  <div className="font-semibold text-lime">Native Ordered Target Statistics</div>
+                  <p className="text-muted-foreground leading-relaxed">
+                    Standard target encoding leaks the target variable <InlineMath formula="y_i" /> into the feature representation, causing severe overfitting. CatBoost solves this with <em>Ordered Target Statistics</em>: it randomly permutes the dataset and computes each sample's target statistic strictly using samples that appear <em>prior</em> to it in the random ordering, eliminating target shift entirely.
+                  </p>
+                </div>
+                <div className="panel p-4 space-y-2 border-hairline/80">
+                  <div className="font-semibold text-cyan">Oblivious (Symmetric) Trees</div>
+                  <p className="text-muted-foreground leading-relaxed">
+                    CatBoost builds oblivious decision trees where all nodes at depth <InlineMath formula="d" /> share the exact same split criterion <InlineMath formula="x_j &gt; c" />. This symmetric architecture provides strong regularization against overfitting and allows ultra-fast vectorized evaluation during production inference (bit-shift addressing into a flat leaf table).
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="panel p-4 space-y-2 text-xs border-hairline/60">
+            <h4 className="font-semibold text-foreground">Summary Comparison: Categorical Handling</h4>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left font-mono">
+                <thead>
+                  <tr className="border-b border-hairline text-muted-foreground">
+                    <th className="py-2 pr-4">Framework</th>
+                    <th className="py-2 pr-4">Data Type Required</th>
+                    <th className="py-2 pr-4">Categorical Algorithm</th>
+                    <th className="py-2">Production Gotcha</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-hairline/40 text-muted-foreground">
+                  <tr>
+                    <td className="py-2 pr-4 font-semibold text-foreground">LightGBM</td>
+                    <td className="py-2 pr-4"><code className="text-cyan">category</code> dtype</td>
+                    <td className="py-2 pr-4">Optimal Fisher partition (sorting bins by <InlineMath formula="\sum g / \sum h" />)</td>
+                    <td className="py-2"><code className="text-orange">subsample_freq=1</code> required for bagging</td>
+                  </tr>
+                  <tr>
+                    <td className="py-2 pr-4 font-semibold text-foreground">CatBoost</td>
+                    <td className="py-2 pr-4">Raw <code className="text-cyan">str</code> / <code className="text-cyan">object</code></td>
+                    <td className="py-2 pr-4">Online Ordered Target Statistics + feature combinations</td>
+                    <td className="py-2">Higher training RAM on massive high-cardinality combinations</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </Container>

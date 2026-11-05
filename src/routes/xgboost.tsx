@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Container, PageHero, SectionHeader, SectionIndex } from "@/components/lab/primitives";
+import { Container, PageHero, SectionHeader, SectionIndex, Pill, Tabs } from "@/components/lab/primitives";
 import { MathBlock, InlineMath } from "@/components/lab/MathBlock";
 import { DerivationStep, WorkedExample, KeyTakeaway, WarningCallout } from "@/components/lab/PedagogicalComponents";
 import { QuizBlock } from "@/components/lab/QuizBlock";
@@ -29,6 +30,8 @@ const SECTIONS = [
 ];
 
 function XGBoostPage() {
+  const [taskTab, setTaskTab] = useState("classifier");
+
   return (
     <>
       <PageHero
@@ -308,52 +311,257 @@ function XGBoostPage() {
           id="implementation"
           index="07"
           eyebrow="Hands-On Python"
-          title="Python Implementation with xgboost"
+          title="Production-Grade Python Implementation with XGBoost"
+          description="Complete, fully self-contained workflows for classification and regression featuring sparsity-aware missing value handling, early stopping, Gain-based feature importance, and JSON serialization."
         />
-        <div className="max-w-4xl space-y-4 md:ml-[136px]">
-          <div className="panel overflow-hidden">
-            <div className="flex items-center justify-between border-b border-hairline bg-surface-2/40 px-4 py-2 font-mono text-xs">
-              <span>train_xgboost.py</span>
-              <span className="text-cyan">xgboost 2.0+</span>
-            </div>
-            <pre className="overflow-x-auto p-4 font-mono text-xs leading-6 text-foreground">
-{`import xgboost as xgb
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import roc_auc_score, log_loss
+        <div className="max-w-4xl space-y-6 md:ml-[136px]">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <Tabs
+              tabs={[
+                { value: "classifier", label: "XGBClassifier (Sparsity & Early Stopping)" },
+                { value: "regressor", label: "XGBRegressor (Newton L2 Shrinkage)" },
+              ]}
+              value={taskTab}
+              onChange={setTaskTab}
+            />
+            <span className="text-xs font-mono text-muted-foreground">
+              Reference: <code className="text-cyan">python python/03_xgboost_workflow.py</code>
+            </span>
+          </div>
 
-# 1. Instantiate modern XGBClassifier with regularized parameters
-model = xgb.XGBClassifier(
-    n_estimators=1000,
-    learning_rate=0.03,
-    max_depth=5,
-    min_child_weight=3,
-    gamma=0.2,                 # leaf penalty
-    reg_alpha=0.1,             # L1 regularization
-    reg_lambda=1.5,            # L2 regularization
-    subsample=0.8,             # row subsampling
-    colsample_bytree=0.8,      # column subsampling per tree
-    eval_metric=["auc", "logloss"],
-    early_stopping_rounds=50,  # stop if validation AUC doesn't improve for 50 rounds
+          {taskTab === "classifier" ? (
+            <div className="space-y-4">
+              <div className="panel overflow-hidden">
+                <div className="flex items-center justify-between border-b border-hairline bg-surface-2/40 px-4 py-2 font-mono text-xs">
+                  <span>xgboost_classifier_workflow.py</span>
+                  <span className="text-cyan">xgboost &gt;= 2.0.0</span>
+                </div>
+                <pre className="overflow-x-auto p-4 font-mono text-xs leading-6 text-foreground">
+{`import numpy as np
+import xgboost as xgb
+from sklearn.datasets import make_classification
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, roc_auc_score, classification_report
+
+# 1. Synthesize binary classification dataset with missing values (NaN)
+X, y = make_classification(
+    n_samples=2000,
+    n_features=15,
+    n_informative=10,
+    n_redundant=3,
+    weights=[0.80, 0.20],  # Imbalanced: 20% minority class
     random_state=42,
-    tree_method="hist",        # fast histogram-based split finding
 )
 
-# 2. Fit with validation monitoring
+# Inject 8% missing values (NaN) to demonstrate XGBoost's native sparsity-aware split finding
+rng = np.random.default_rng(42)
+mask = rng.random(X.shape) < 0.08
+X[mask] = np.nan
+
+# 2. Three-way split: 60% train, 20% validation (for early stopping), 20% held-out test
+X_train_val, X_test, y_train_val, y_test = train_test_split(
+    X, y, test_size=0.20, random_state=42, stratify=y
+)
+X_train, X_val, y_train, y_val = train_test_split(
+    X_train_val, y_train_val, test_size=0.25, random_state=42, stratify=y_train_val
+)
+
+# Compute negative-to-positive class balance ratio for loss weighting
+scale_pos = (y_train == 0).sum() / (y_train == 1).sum()
+
+# 3. Instantiate regularized XGBClassifier with 2nd-order objective
+model = xgb.XGBClassifier(
+    n_estimators=1000,
+    learning_rate=0.03,        # Shrinkage step size (eta)
+    max_depth=4,               # Constrains feature interaction order
+    min_child_weight=3,        # Minimum sum of instance Hessians per leaf
+    gamma=0.2,                 # Minimum split gain threshold (pre-pruning)
+    subsample=0.8,             # Row subsampling ratio (stochastic bagging)
+    colsample_bytree=0.8,      # Column subsampling ratio per tree
+    reg_alpha=0.1,             # L1 penalty on leaf prediction weights
+    reg_lambda=1.5,            # L2 penalty on leaf prediction weights
+    scale_pos_weight=scale_pos, # Class weighting for positive class
+    eval_metric=["auc", "logloss"],
+    early_stopping_rounds=40,  # Halt if validation AUC does not improve for 40 rounds
+    tree_method="hist",        # Hardware-optimized histogram binning
+    random_state=42,
+)
+
+# 4. Fit with validation monitoring
 model.fit(
     X_train, y_train,
     eval_set=[(X_train, y_train), (X_val, y_val)],
-    verbose=100
+    verbose=False,
 )
 
-# 3. Best iteration information
-print(f"Best Iteration: {model.best_iteration}")
+print(f"Optimal Iteration: {model.best_iteration}")
 print(f"Best Validation Score: {model.best_score:.4f}")
 
-# 4. Feature Importance types
-print("Weight Importance:", model.get_booster().get_score(importance_type="weight"))
-print("Gain Importance:", model.get_booster().get_score(importance_type="gain"))`}
-            </pre>
+# 5. Out-of-sample evaluation on unseen test set
+y_pred = model.predict(X_test)
+y_proba = model.predict_proba(X_test)[:, 1]
+
+print(f"Test Accuracy: {accuracy_score(y_test, y_pred):.4f}")
+print(f"Test ROC-AUC:  {roc_auc_score(y_test, y_proba):.4f}")
+print("\\nClassification Report:\\n", classification_report(y_test, y_pred, digits=4))
+
+# 6. Feature Importance: Gain (loss reduction) vs Weight (split frequency)
+booster = model.get_booster()
+gain_scores = booster.get_score(importance_type="gain")
+print("Top 3 features by Gain:", sorted(gain_scores.items(), key=lambda x: x[1], reverse=True)[:3])
+
+# 7. Native JSON Serialization (Production Standard in XGBoost 2.0+)
+model.save_model("xgboost_model.json")
+reloaded_model = xgb.XGBClassifier()
+reloaded_model.load_model("xgboost_model.json")
+print("Model serialized to JSON and reloaded successfully.")`}
+                </pre>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                <div className="panel p-4 space-y-2 border-hairline/80">
+                  <div className="font-semibold text-cyan">Sparsity-Aware Split Finding</div>
+                  <p className="text-muted-foreground leading-relaxed">
+                    Unlike standard Scikit-Learn tree algorithms which require upfront imputation, XGBoost handles missing values (<code className="text-orange">NaN</code>) natively. When evaluating each split, missing samples are sent to the left branch, then the right branch. The direction yielding the higher Gain is designated as the <em>default direction</em> and stored permanently in the node.
+                  </p>
+                </div>
+                <div className="panel p-4 space-y-2 border-hairline/80">
+                  <div className="font-semibold text-violet">Gain vs Weight Importance</div>
+                  <p className="text-muted-foreground leading-relaxed">
+                    <code className="text-foreground">get_score(importance_type="weight")</code> only counts how many times a feature is split on, biasing towards continuous noise with many split candidates. <code className="text-foreground">importance_type="gain"</code> measures the actual average training loss reduction brought by splits on that feature, making it much more reliable.
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="panel overflow-hidden">
+                <div className="flex items-center justify-between border-b border-hairline bg-surface-2/40 px-4 py-2 font-mono text-xs">
+                  <span>xgboost_regressor_workflow.py</span>
+                  <span className="text-cyan">xgboost &gt;= 2.0.0</span>
+                </div>
+                <pre className="overflow-x-auto p-4 font-mono text-xs leading-6 text-foreground">
+{`import numpy as np
+import xgboost as xgb
+from sklearn.datasets import make_regression
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import root_mean_squared_error, r2_score
+
+# 1. Synthesize continuous regression dataset with realistic additive noise
+X, y = make_regression(
+    n_samples=1500,
+    n_features=12,
+    n_informative=8,
+    noise=10.0,
+    random_state=42,
+)
+
+# 2. Three-way split: 60% train, 20% validation, 20% held-out test
+X_train_val, X_test, y_train_val, y_test = train_test_split(
+    X, y, test_size=0.20, random_state=42
+)
+X_train, X_val, y_train, y_val = train_test_split(
+    X_train_val, y_train_val, test_size=0.25, random_state=42
+)
+
+# 3. Instantiate XGBRegressor with 2nd-order squared-error objective
+reg = xgb.XGBRegressor(
+    n_estimators=800,
+    learning_rate=0.04,
+    max_depth=5,
+    min_child_weight=2,
+    gamma=0.1,
+    subsample=0.85,
+    colsample_bytree=0.85,
+    reg_lambda=1.0,            # L2 ridge penalty on leaf weights
+    objective="reg:squarederror",
+    eval_metric="rmse",
+    early_stopping_rounds=30,  # Patience rounds
+    tree_method="hist",
+    random_state=42,
+)
+
+# 4. Train with early stopping monitoring
+reg.fit(
+    X_train, y_train,
+    eval_set=[(X_val, y_val)],
+    verbose=False,
+)
+
+# 5. Out-of-sample evaluation on held-out test set
+y_pred = reg.predict(X_test)
+rmse = root_mean_squared_error(y_test, y_pred)
+r2 = r2_score(y_test, y_pred)
+
+print(f"Optimal Iteration: {reg.best_iteration}")
+print(f"Test RMSE: {rmse:.3f}")
+print(f"Test R² Score: {r2:.3f}")
+
+# 6. Save model booster
+reg.save_model("xgboost_regressor.json")
+print("Regression booster saved to JSON.")`}
+                </pre>
+              </div>
+
+              <div className="panel p-4 space-y-2 border-hairline/80 text-xs">
+                <div className="font-semibold text-lime">2nd-Order Taylor Exactness for Squared Error</div>
+                <p className="text-muted-foreground leading-relaxed">
+                  For squared error <InlineMath formula="l(y, \hat{y}) = \frac{1}{2}(y - \hat{y})^2" />, the negative gradient is <InlineMath formula="g_i = \hat{y}_i - y_i" /> (the residual error) and the Hessian is constant: <InlineMath formula="h_i = 1" />. As a result, the second-order Taylor expansion is not an approximation—it is mathematically exact! The denominator <InlineMath formula="\sum h_i + \lambda = N_j + \lambda" /> directly shrinks leaf predictions by sample count plus ridge weight.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* 9 Canonical Hyperparameters Guide */}
+          <div className="panel p-5 space-y-4">
+            <h4 className="text-sm font-semibold text-foreground">The 9 Canonical XGBoost Hyperparameters</h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+              <div className="p-3 rounded bg-surface-2/60 border border-hairline/60 space-y-1">
+                <div className="font-mono font-bold text-violet">n_estimators (100–2000)</div>
+                <p className="text-muted-foreground">Number of sequential boosting rounds. Pair with a low <code className="text-cyan">learning_rate</code> and <code className="text-cyan">early_stopping_rounds</code>.</p>
+              </div>
+              <div className="p-3 rounded bg-surface-2/60 border border-hairline/60 space-y-1">
+                <div className="font-mono font-bold text-violet">learning_rate / eta (0.01–0.1)</div>
+                <p className="text-muted-foreground">Step-size shrinkage factor <InlineMath formula="\eta" /> scaling each tree's contribution. Lower values improve generalization at the cost of requiring more iterations.</p>
+              </div>
+              <div className="p-3 rounded bg-surface-2/60 border border-hairline/60 space-y-1">
+                <div className="font-mono font-bold text-violet">max_depth (3–8)</div>
+                <p className="text-muted-foreground">Maximum tree depth. Binds the interaction order between features. Values above 8 frequently trigger overfitting on tabular data.</p>
+              </div>
+              <div className="p-3 rounded bg-surface-2/60 border border-hairline/60 space-y-1">
+                <div className="font-mono font-bold text-cyan">min_child_weight (1–10)</div>
+                <p className="text-muted-foreground">Minimum sum of instance Hessians <InlineMath formula="\sum h_i" /> required in a leaf. In binary classification, this prevents leaves with very few minority samples.</p>
+              </div>
+              <div className="p-3 rounded bg-surface-2/60 border border-hairline/60 space-y-1">
+                <div className="font-mono font-bold text-cyan">gamma / min_split_loss (0–1.0)</div>
+                <p className="text-muted-foreground">Minimum loss reduction required to make a further partition. Splits whose raw gain does not exceed <InlineMath formula="\gamma" /> are pre-pruned.</p>
+              </div>
+              <div className="p-3 rounded bg-surface-2/60 border border-hairline/60 space-y-1">
+                <div className="font-mono font-bold text-cyan">subsample (0.6–0.9)</div>
+                <p className="text-muted-foreground">Row subsampling ratio per tree. Induces stochastic diversity across boosting steps and guards against sample-level overfitting.</p>
+              </div>
+              <div className="p-3 rounded bg-surface-2/60 border border-hairline/60 space-y-1">
+                <div className="font-mono font-bold text-orange">colsample_bytree (0.5–0.9)</div>
+                <p className="text-muted-foreground">Fraction of feature columns randomly subsampled for each tree. Decorrelates trees and suppresses dominant collinear features.</p>
+              </div>
+              <div className="p-3 rounded bg-surface-2/60 border border-hairline/60 space-y-1">
+                <div className="font-mono font-bold text-orange">reg_alpha (0–1.0)</div>
+                <p className="text-muted-foreground">L1 regularization on leaf weights <InlineMath formula="\alpha \sum |w_j|" />. Encourages leaf weights toward zero in sparse or noisy settings.</p>
+              </div>
+              <div className="p-3 rounded bg-surface-2/60 border border-hairline/60 space-y-1">
+                <div className="font-mono font-bold text-orange">reg_lambda (1.0–5.0)</div>
+                <p className="text-muted-foreground">L2 ridge regularization on leaf weights <InlineMath formula="\lambda \sum w_j^2" />. Appears directly in the denominator <InlineMath formula="H + \lambda" />, stabilizing small-Hessian leaves.</p>
+              </div>
+            </div>
           </div>
+
+          <WarningCallout title="Three Common XGBoost Practitioner Mistakes">
+            <ul className="list-disc pl-4 space-y-1 text-xs">
+              <li><strong>Relying on split count (Weight importance):</strong> High-cardinality or continuous noisy features get split on repeatedly, artificially inflating their Weight score. Always inspect <em>Gain</em> or SHAP values.</li>
+              <li><strong>Using Python pickle instead of native JSON/UBJSON:</strong> XGBoost 2.0+ deprecates raw pickle for production serialization due to security vulnerabilities and cross-architecture incompatibilities. Use <code className="text-cyan">save_model("model.json")</code>.</li>
+              <li><strong>Forgetting to specify validation data for early stopping:</strong> Setting <code className="text-orange">early_stopping_rounds</code> without providing an <code className="text-cyan">eval_set</code> in <code className="text-foreground">fit()</code> will either throw an error or cause the model to train for all <code className="text-foreground">n_estimators</code> without early exit.</li>
+            </ul>
+          </WarningCallout>
         </div>
       </Container>
 
