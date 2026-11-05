@@ -106,3 +106,14 @@ desktop.ini
 *.temp
 *.bak
 *.cache
+
+# ==========================================
+# Python
+# ==========================================
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+*.joblib
+*.cbm
